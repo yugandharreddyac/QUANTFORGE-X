@@ -1,0 +1,199 @@
+# MATHEMATICAL & SCIENTIFIC VALIDATION PLAN
+
+**QUANTFORGE X — Analytical Benchmarks, Numerical Convergence Limits & Mathematical Proofs**
+
+---
+
+## 1. Principles of Mathematical Validation & Criteria Taxonomy
+
+In QUANTFORGE X, no quantitative routine is considered acceptable merely because code executes without raising an exception. However, scientific rigor also demands that we do not conflate **software correctness** with **empirical research hypotheses**.
+
+Every validation test and acceptance criterion in this laboratory is strictly categorized into one of six classes:
+
+1. **`[MATH_INVARIANT]` (Analytical Invariant):** Closed-form identity or exact conservation law that must hold to floating-point relative tolerance on every execution. **Status: PASS/FAIL.**
+2. **`[NUM_TOLERANCE]` (Numerical Approximation Tolerance):** Discretization error or optimization convergence governed by a proven asymptotic rate (e.g., SDE strong error slope, KKT residuals). **Status: PASS/FAIL.**
+3. **`[STAT_VALIDATION]` (Statistical Algorithm Verification):** Statistical property of an algorithm verified on *synthetic data with known ground truth* (e.g., Monte Carlo coverage, SDE weak moments, MLE parameter consistency). **Status: PASS/FAIL (with explicitly derived false-failure budget).**
+4. **`[EMP_HYPOTHESIS]` (Empirical Research Hypothesis):** A testable scientific hypothesis evaluated on real market data (e.g., whether deep learning beats linear baselines, whether EVT-VaR passes Kupiec tests during crises, whether risk-sensitive bandits reduce drawdown). **Status: SCIENTIFIC OUTCOME (Both positive and negative results are valid deliverables; NEVER a software pass/fail gate).**
+5. **`[PERF_BENCHMARK]` (Performance & Resource Constraint):** Execution time, memory footprint, or hardware compatibility limits. **Status: PROPOSAL PENDING MEASUREMENT.**
+6. **`[DOC_REPRO]` (Documentation & Reproducibility):** SHA-256 configuration hashes, seed logging, library version tracking, and failure registry entries. **Status: PASS/FAIL.**
+
+---
+
+## 2. Mathematical Benchmark Inventory & Taxonomy
+
+```
++--------------------------------------------------------------------------------------------------------------------+
+|                                         MATHEMATICAL VALIDATION MAP                                                |
++--------------------------------------------------------------------------------------------------------------------+
+| COMPONENT                   | NUMERICAL METHOD              | THEORETICAL BENCHMARK           | CLASSIFICATION     |
+|-----------------------------+-------------------------------+---------------------------------+--------------------|
+| Black-Scholes European Call | Closed-Form & Monte Carlo     | Analytical Put-Call Parity      | MATH_INVARIANT     |
+| Brownian Quadratic Variation| Pathwise Discretization       | Sum (dW)^2 -> T in L2 & prob.   | NUM_TOLERANCE      |
+| Itô Stochastic Calculus     | Left-Endpoint Discrete Sums   | I_discrete - 0.5(W_T^2 - T)     | MATH_INVARIANT/NUM |
+| SDE Strong Convergence      | Euler-Maruyama & Milstein     | Exact Path Coupling on GBM      | NUM_TOLERANCE      |
+| SDE Weak Convergence        | Exact Moment Recursions       | Analytical E[X_T^2] on GBM      | STAT_VALIDATION    |
+| Monte Carlo Coverage        | Repeated Sample Intervals     | Exact Binomial Coverage Band    | STAT_VALIDATION    |
+| Variance Reduction          | Antithetic & Control Variates | Measured VRF with Uncertainty   | STAT_VALIDATION    |
+| Tail Distribution Fitting   | Hill Estimator / GPD MLE      | Asymptotic SD 1/sqrt(k)         | STAT_VALIDATION    |
+| Gaussian Process Regression | Cholesky Posterior Solver     | Exact GP Prior Synthetic Test   | STAT_VALIDATION    |
+| Portfolio Optimization      | Convex QP Solvers (OSQP/SCS)  | KKT Residuals & Analytical 2-A  | NUM_TOLERANCE      |
+| Tail Risk Backtesting       | EVT Peaks-Over-Threshold      | Kupiec POF & Christoffersen     | EMP_HYPOTHESIS     |
+| Deep vs Linear Forecasting  | TCN / Transformer vs Ridge    | Out-of-sample RMSE & MASE       | EMP_HYPOTHESIS     |
+| Risk-Sensitive Bandits      | CVaR-UCB vs Standard UCB1     | Finite-Time Regret Bound        | STAT_VALIDATION/EMP|
++--------------------------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 3. Detailed Component Validation Protocols
+
+### 3.1 Option Pricing & Monte Carlo Confidence Bounds
+
+#### Analytical Ground Truth & Put-Call Parity (`[MATH_INVARIANT]`):
+For European options on a non-dividend paying stock with geometric Brownian motion dynamics, the Put-Call parity identity must hold to floating-point precision on every strike and maturity grid point:
+$$|C_{\text{BS}} - P_{\text{BS}} - (S_0 - K e^{-rT})| < 10^{-12}$$
+
+#### Monte Carlo Estimator & Repeated Coverage Validation (`[STAT_VALIDATION]`):
+For terminal expectation $\hat{\mu} = \frac{1}{N} \sum_{i=1}^N Y^{(i)}$, let the sample variance be $S_N^2$. The standard CLT asymptotic $100(1-\alpha)\%$ confidence interval is:
+$$\left[ \hat{\mu} - z_{1-\alpha/2} \frac{S_N}{\sqrt{N}}, \, \hat{\mu} + z_{1-\alpha/2} \frac{S_N}{\sqrt{N}} \right]$$
+1. **Nominal Coverage Level:** Nominal coverage is $p = 0.99$ with $z_{0.995} \approx 2.576$.
+2. **Exact Binomial Coverage Band:**
+   Rather than guessing an arbitrary band (such as $[96\%, 100\%]$), the empirical coverage across $R$ independent replications must be evaluated against an exact Binomial distribution $\text{Binomial}(R, p)$ with an explicit false-failure budget $\alpha_{\text{fail}} = 10^{-3}$ (0.1%):
+   - For $R = 200, p = 0.99$: The exact cumulative probability $P(K \le 190) \approx 0.0053$ and $P(K \le 188) \approx 0.00045$. To guarantee a false-failure rate $\le 10^{-3}$, the lower critical threshold is $k \ge 189$ ($94.5\%$). Note: If an uncalibrated threshold of $96.0\%$ ($k \ge 192$) were used, $P(K \le 191) \approx 0.018$, creating an unacceptable $\approx 2\%$ false failure rate.
+   - **Recommended Proposal Pending Approval:** $R = 1,000$ replications with lower critical threshold $k \ge 980$ ($98.0\%$), achieving $P(K \le 979) \approx 0.0003 < 10^{-3}$.
+3. **Skewness Limitation:** Note that CLT-based intervals under-cover for highly skewed payoff distributions when sample size $N$ is small; this limitation must be recorded in the test documentation.
+4. **Fixed-Seed Regression Tests (`[DOC_REPRO]`):** Fixed-seed tests verify local regression and reproducibility only, not statistical correctness. Because golden values may change across NumPy releases or CPU SIMD vectorizations, golden reference values must be recorded alongside exact library versions and platform metadata.
+
+---
+
+### 3.2 Stochastic Calculus: Itô Discrepancy & Quadratic Variation
+
+#### Mathematical Convention:
+Stochastic integrals are defined under the **Itô convention** with **left-endpoint evaluation**:
+$$I_{\text{discrete}} = \sum_{k=0}^{M-1} W_{t_k} (W_{t_{k+1}} - W_{t_k})$$
+
+#### Deterministic Algebraic Invariant (`[MATH_INVARIANT]`):
+By the algebraic telescoping identity on discrete increments:
+$$W_T^2 = \sum_{k=0}^{M-1} (W_{t_{k+1}}^2 - W_{t_k}^2) = 2 I_{\text{discrete}} + \sum_{k=0}^{M-1} (\Delta W_k)^2$$
+Rearranging gives the exact, pathwise identity:
+$$I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T) \equiv \frac{1}{2}\left( T - \sum_{k=0}^{M-1} (\Delta W_k)^2 \right)$$
+- *Acceptance Criterion (`[MATH_INVARIANT]`):* For every simulated path, the identity must hold within a deterministic floating-point tolerance:
+  $$\left| \left(I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T)\right) - \frac{1}{2}\left(T - \sum_{k=0}^{M-1} (\Delta W_k)^2\right) \right| \le 10 \times \epsilon_{\text{mach}} \times M \times \max(1, W_T^2)$$
+  Where $\epsilon_{\text{mach}} \approx 2.22 \times 10^{-16}$.
+
+#### Quadratic Variation & $L^2$ RMS Convergence (`[NUM_TOLERANCE]`):
+$\sum_{k=0}^{M-1} (\Delta W_k)^2$ does not converge to $T$ in the sense of pathwise total variation (Brownian motion paths have infinite total variation almost surely). Instead, $\sum (\Delta W_k)^2$ converges to $T$ in $L^2$ (mean-square norm) and in probability (and almost surely along dyadic subdivisions).
+Since $\text{Var}\left(\sum (\Delta W_k)^2\right) = 2 T \Delta t$, the theoretical RMS error is:
+$$\left\| I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T) \right\|_{L^2} = \sqrt{\frac{T \Delta t}{2}} = \mathcal{O}(\sqrt{\Delta t})$$
+- *Acceptance Criterion (`[NUM_TOLERANCE]`):*
+  - Evaluate across a geometric step-size grid $M \in \{64, 128, 256, 512, 1024\}$ using batches of paths ($B = 10$ batches of $P = 1,000$ paths each).
+  - Compute the linear regression slope of $\ln(\text{RMS Error})$ against $\ln(\Delta t)$ across the batches.
+  - The theoretical slope of $0.5$ must fall inside the fitted slope's 3-standard-error confidence interval:
+    $$0.5 \in [\hat{\text{slope}} - 3 \times \text{SE}, \, \hat{\text{slope}} + 3 \times \text{SE}]$$
+  - **Informativeness Condition:** The slope standard error must be small enough to separate order 0.5 from order 1.0 (proposed constraint: $\text{SE} \le 0.05$).
+
+---
+
+### 3.3 SDE Solvers: Strong & Weak Convergence
+
+For the 1D autonomous stochastic differential equation $dX_t = a(X_t) dt + b(X_t) dW_t$:
+
+#### Regularity Assumptions:
+1. **Euler-Maruyama:** Requires global Lipschitz continuity and linear growth bounds on drift $a(x)$ and diffusion $b(x)$. Theoretical orders: Strong $\gamma = 0.5$, Weak $\beta = 1.0$.
+2. **Milstein:** Requires $b(x) \in C^1$ with Lipschitz derivative $b'(x)$. In multi-dimensional noise, commutativity is required to avoid Lévy area simulation; for 1D scalar noise, commutativity is trivially satisfied. Theoretical orders: Strong $\gamma = 1.0$, Weak $\beta = 1.0$.
+
+#### Strong Convergence Protocol (`[NUM_TOLERANCE]`):
+Evaluate on 1D Geometric Brownian Motion ($a(X) = \mu X, b(X) = \sigma X$) where the exact analytical path driven by the same Brownian increments is $X_t = X_0 \exp((\mu - \frac{1}{2}\sigma^2)t + \sigma W_t)$.
+1. Strong error is defined as the root-mean-square pathwise discrepancy:
+   $$\epsilon_{\text{strong}}(h) = \left( \mathbb{E}\left[ |X_T - X_T^h|^2 \right] \right)^{1/2}$$
+2. Generate coarse increments by summing fine Brownian increments to ensure identical path driving.
+3. Evaluate across step sizes $h \in \{0.08, 0.04, 0.02, 0.01\}$ with $B = 10$ independent batches of $P = 1,000$ paths.
+4. *Acceptance Criterion (`[NUM_TOLERANCE]`):*
+   - Theoretical strong orders ($0.5$ for Euler, $1.0$ for Milstein) must fall inside their respective 3-SE intervals.
+   - Informativeness requirement: $\text{SE} \le 0.05$ to strictly separate Euler from Milstein.
+   - **Negative Control Requirement:** The test harness must execute a negative control test asserting that deliberately incorrect claimed orders (e.g. claiming order 1.0 for Euler) are strictly rejected.
+
+#### Deterministic Weak Error Verification (`[STAT_VALIDATION]`):
+Plain Monte Carlo weak-error estimation is dominated by sampling noise unless trillions of paths are generated (for $\mu=0.05, \sigma=0.2, T=1, h=0.01$, the Euler relative weak error is $\approx 7 \times 10^{-5}$, whereas the Monte Carlo standard error with 10,000 paths is $\approx 4 \times 10^{-3}$).
+Therefore, weak convergence is verified using **exact deterministic moment recursions** for $g(x) = x^2$:
+- **Euler-Maruyama Exact Second Moment:**
+  $$\mathbb{E}[X_{k+1}^2 \mid X_k] = X_k^2 \left( 1 + (2\mu + \sigma^2)h + \mu^2 h^2 \right)$$
+  $$\mathbb{E}[X_N^2] = x_0^2 \left( 1 + (2\mu + \sigma^2)h + \mu^2 h^2 \right)^N$$
+- **Milstein Exact Second Moment Factor (Derived):**
+  For Milstein on GBM, $X_{k+1} = X_k [ 1 + \mu h + \sigma \Delta W + 0.5 \sigma^2 ((\Delta W)^2 - h) ]$.
+  Let $c = 1 + \mu h - 0.5 \sigma^2 h$. Then $X_{k+1}/X_k = c + \sigma \Delta W + 0.5 \sigma^2 (\Delta W)^2$.
+  Squaring and taking expectations using $\mathbb{E}[(\Delta W)^2]=h$ and $\mathbb{E}[(\Delta W)^4]=3h^2$:
+  $$\mathbb{E}[(X_{k+1}/X_k)^2] = c^2 + \sigma^2 h + c \sigma^2 h + 0.75 \sigma^4 h^2$$
+  $$\mathbb{E}[X_N^2] = x_0^2 \left( c^2 + \sigma^2 h + c \sigma^2 h + 0.75 \sigma^4 h^2 \right)^N$$
+- **Exact Analytical Reference:**
+  $$\mathbb{E}[X_T^2] = x_0^2 \exp((2\mu + \sigma^2)T)$$
+- *Acceptance Criterion (`[STAT_VALIDATION]`):*
+  The deterministic weak error $|\mathbb{E}[X_N^2] - \mathbb{E}[X_T^2]|$ is evaluated across step sizes $h$; the log-log slope must lie inside $[0.90, 1.10]$, confirming theoretical order $\mathcal{O}(h)$ without Monte Carlo sampling noise.
+  *(Rule: Any Monte Carlo weak-error test is excluded unless the measured error exceeds 3 reported standard errors).*
+
+---
+
+### 3.4 Variance Reduction Evaluation (`[STAT_VALIDATION]`)
+
+The Variance Reduction Factor (VRF) is defined as the ratio of sample variances per equal number of function evaluations:
+$$\text{VRF} = \frac{\widehat{\text{Var}}(\hat{Y}_{\text{crude}}) \times \text{Cost}_{\text{crude}}}{\widehat{\text{Var}}(\hat{Y}_{\text{reduced}}) \times \text{Cost}_{\text{reduced}}}$$
+- **Protocol:** Reported with asymptotic standard error: $\text{SE}(\widehat{\text{VRF}}) \approx \text{VRF} \times \sqrt{2/(N-1)}$.
+- **No Unjustified Hardcoded Thresholds:** VRF depends on correlation $\rho(Y, X)$ and moneyness/volatility. Fixed pass/fail thresholds are removed.
+- **Pilot Proposal Pending Approval:** For the benchmark contract ($S_0=100, K=100, r=0.05, \sigma=0.20, T=1.0$), loose sanity thresholds ($\text{VRF}_{\text{Antithetic}} \ge 1.2$, $\text{VRF}_{\text{Control}} \ge 2.5$) are proposed pending empirical pilot recording.
+
+---
+
+### 3.5 Heavy Tails, Hill Estimator & Extreme Value Theory
+
+#### Tail Index Estimation on Synthetic Pareto (`[STAT_VALIDATION]`):
+For an exact Pareto sample with tail index $\alpha$, the Hill estimator of $1/\alpha$ on the top $k$ order statistics has asymptotic relative standard deviation:
+$$\text{Relative SD} = \frac{1}{\sqrt{k}}$$
+- *Acceptance Criterion (`[STAT_VALIDATION]`):*
+  On a synthetic Pareto sample of size $n = 50,000$ with $\alpha = 2.5$ and threshold index $k = 1,000$:
+  The relative estimation error must not exceed 3 asymptotic standard deviations:
+  $$\frac{|\hat{\alpha} - \alpha_{\text{true}}|}{\alpha_{\text{true}}} \le \frac{3}{\sqrt{k}} \approx \frac{3}{\sqrt{1000}} \approx 0.095 \, (\approx 9.5\%)$$
+  *(Note: Reallocated to Phase 4 Quantitative Research Protocol per dependency order).*
+
+#### EVT Peaks-Over-Threshold & Crash Backtesting (`[EMP_HYPOTHESIS]`):
+- **Algorithm Verification (`[STAT_VALIDATION]`):** Kupiec POF Likelihood Ratio and Christoffersen independence test statistics match precomputed numerical fixtures within relative tolerance $10^{-8}$.
+- **Empirical Crash Evaluation (`[EMP_HYPOTHESIS]`):** Unconditional POT and conditional GARCH-EVT are evaluated on historical crash periods (2008 GFC, March 2020). Test statistics, $p$-values, exception clusters, and limitations are reported. Unconditional models failing independence during high-clustering periods are documented as empirical findings, not software bugs.
+
+---
+
+### 3.6 Convex Optimization & KKT Conditions
+
+#### Analytical 2-Asset Minimum Variance Formula (`[MATH_INVARIANT]`):
+For 2 assets with covariance matrix $\Sigma = \begin{pmatrix} \sigma_1^2 & \sigma_{12} \\ \sigma_{12} & \sigma_2^2 \end{pmatrix}$, the unconstrained minimum variance weight is:
+$$w_1^* = \frac{\sigma_2^2 - \sigma_{12}}{\sigma_1^2 + \sigma_2^2 - 2\sigma_{12}}, \quad w_2^* = 1 - w_1^*$$
+- **Boundary Conditions:**
+  - If $\sigma_{12} > \sigma_2^2$, unconstrained $w_1^* < 0$; the constrained long-only solution is on the boundary: $w_1 = 0, w_2 = 1$.
+  - If $\sigma_{12} > \sigma_1^2$, unconstrained $w_1^* > 1$; the constrained long-only solution is: $w_1 = 1, w_2 = 0$.
+- *Acceptance Criterion (`[MATH_INVARIANT]` / `[NUM_TOLERANCE]`):* Numerical CVXPY solver matches analytical weights within absolute tolerance $10^{-7}$.
+
+#### Solver Residuals & Status Audit (`[NUM_TOLERANCE]`):
+Instead of the ambiguous term "primal gap", tests must audit standard optimization quantities:
+1. **Solver Status:** Reject "solved inaccurate", "optimal inaccurate", or "user limit" as passes; solver must return `OPTIMAL`.
+2. **Primal Residual:** $\|\mathbf{1}^T w - 1\|_\infty \le \epsilon_{\text{primal}}$ and $\min(w) \ge -\epsilon_{\text{primal}}$.
+3. **Dual Residual & Duality Gap:** Audited against configured solver tolerances (for OSQP: `eps_abs = 1e-7, eps_rel = 1e-7`, requiring residuals $\le 10^{-6}$).
+
+---
+
+### 3.7 Gaussian Process Uncertainty & Continuous Calibration
+
+- **Synthetic Prior Validation (`[STAT_VALIDATION]`):** On synthetic datasets drawn from the GP prior with known covariance kernel and noise, empirical coverage of $95\%$ credible intervals is evaluated across independent datasets using exact binomial confidence bands.
+- **Continuous Calibration (`[EMP_HYPOTHESIS]`):** Replaced Expected Calibration Error (ECE, designed for discrete classification) with continuous regression calibration tools:
+  - Probability Integral Transform (PIT) uniformity histogram.
+  - Coverage-versus-nominal calibration curves.
+  - Continuous Ranked Probability Score (CRPS).
+- **Noise-Free Interpolation (`[NUM_TOLERANCE]`):** Interpolation error on smooth target functions $< 10^{-4}$ with explicit diagonal jitter ($\epsilon = 10^{-8}$) to ensure Cholesky stability.
+
+---
+
+### 3.8 Random Number Generation & Reproducibility Policy (`[DOC_REPRO]`)
+
+1. **RNG Architecture:** Standardized on NumPy's modern `Generator` using `PCG64`, initialized from an explicit `SeedSequence`.
+2. **Parallel & Batch Spawning:** Independent replications and parallel test workers must spawn independent streams via `SeedSequence.spawn()`; no shared global state or reliance on `np.random.seed()`.
+3. **Numeric Comparison Policy:**
+   - Float64 array equality is asserted using combined relative and absolute tolerances:
+     $$\text{assert } \text{np.allclose}(a, b, \, \text{rtol}=10^{-9}, \, \text{atol}=10^{-12})$$
+   - Exact bitwise identity is asserted **only** on the same machine, same OS, and identical NumPy library version. Cross-platform assertions use standard numerical tolerances.

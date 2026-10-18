@@ -1,0 +1,170 @@
+# EXPERIMENTAL DESIGN & EMPIRICAL RESEARCH PROTOCOL
+
+**QUANTFORGE X — Scientific Hypotheses, Controlled Experiments & Validation Protocol**
+
+---
+
+## 1. Scientific Research Protocol & Negative Result Policy
+
+QUANTFORGE X enforces the scientific method across all quantitative investigations. In accordance with our **Criteria Taxonomy**, all experiments in this laboratory test **Empirical Research Hypotheses (`[EMP_HYPOTHESIS]`)**.
+
+### Fundamental Scientific Principles:
+1. **A Negative Result is a Valid Scientific Outcome:**
+   - If a deep neural network (TCN, Transformer) fails to outperform a regularized linear model (Ridge) or Gaussian Process out-of-sample, that is a legitimate empirical finding.
+   - If an unconditional Extreme Value Theory (EVT) model experiences clustered exceedances during March 2020 and fails the Christoffersen independence test, that confirms known financial econometrics literature (e.g., McNeil & Frey, 2000) highlighting the necessity of conditional volatility filtering.
+   - If unconstrained Markowitz optimization is beaten by naive $1/N$ diversification after transaction costs, that replicates the established findings of DeMiguel, Garlappi, and Uppal (2009).
+2. **Backtest Limitation Notice:** A profitable backtest is **not** evidence of future live market profitability. All results reflect historical simulations and synthetic assumptions.
+3. **Loss Sign Convention:** In all risk models, losses are defined as positive quantities ($L_t = -r_t$). VaR at level $q$ is the $(1-q)$-quantile of losses ($P(L_t > \text{VaR}_q) = 1-q$).
+4. **Coherence of Risk Measures:** Value-at-Risk (VaR) is not generally subadditive (and therefore not a coherent risk measure per Artzner et al. 1999) under heavy-tailed non-elliptical distributions. Conditional Value-at-Risk (CVaR / Expected Shortfall) is subadditive and coherent; this distinction must be evaluated across all risk experiments.
+5. **Statistical Test Limitations:** The Kupiec Proportion of Failures (POF) and Christoffersen independence tests have notoriously low statistical power in small sample sizes (e.g., $T < 500$ days); tests must explicitly report sample size, power caveats, test statistics, and exact $p$-values.
+6. **Mandatory Failure Logging:** Under no circumstances will code be modified or hyperparameters deceptively tuned to manufacture artificial positive results. All failed hypotheses and underperforming architectures are registered in `failed_hypotheses_registry.json`.
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    EXPERIMENT EXECUTION LIFECYCLE                                  |
++----------------------------------------------------------------------------------------------------+
+  1. HYPOTHESIS SPECIFICATION:
+     Define explicit Null ($H_0$) and Alternative ($H_1$) hypotheses with evaluation metrics.
+                                              |
+                                              v
+  2. TRIAL REGISTRY & FREEZING:
+     Register trial configuration in central trial registry counting all attempted configurations.
+     Strict train/validation/test separation; final test set evaluated ONCE per frozen hypothesis.
+                                              |
+                                              v
+  3. DATA PARTITIONING & ANTI-LEAKAGE:
+     Apply chronological walk-forward splits with purging/embargo. Assert zero-leakage invariant.
+                                              |
+                                              v
+  4. MULTIPLE TESTING ADJUSTMENT (OPTIONS):
+     Apply candidate multiple-testing corrections (Deflated Sharpe Ratio, Bonferroni/Holm, Benjamini-Hochberg).
+                                              |
+                                              v
+  5. SCIENTIFIC EVIDENCE GENERATION:
+     Generate reproducible artifact bundle (JSON metrics, tear-sheets, ablation logs, seed manifest).
+     Log outcome in failure registry regardless of whether H_0 or H_1 is supported.
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 2. Core Controlled Experiments Inventory
+
+QUANTFORGE X implements seven foundational research experiments:
+
+### Experiment EXP-01: Derivatives Pricing Precision & Variance Reduction
+- **Phase Mapping:** Phase 2 (Financial Engineering & Option Pricing).
+- **Objective:** Evaluate the efficiency and convergence accuracy of variance reduction techniques against crude Monte Carlo in European and path-dependent option pricing.
+- **Hypotheses:**
+  - $H_0$: Control variates and antithetic sampling do not reduce Monte Carlo estimator variance compared to crude Monte Carlo ($\text{VRF} \le 1.0$).
+  - $H_1$: Control variates using the underlying terminal asset price achieve a statistically significant Variance Reduction Factor ($\text{VRF} > 1.0$, with target threshold to be set from a recorded pilot measurement) on at-the-money benchmark contracts without introducing pricing bias.
+- **Baselines:** Crude Monte Carlo with independent Gaussian draws; Black-Scholes analytical closed-form pricing.
+- **Evaluation Metrics:** Variance Reduction Factor (VRF) reported with empirical standard error from repeated independent batches (and normal approximation $\sqrt{2/(N_a-1) + 2/(N_b-1)}$ for comparison), relative pricing error, execution time per unit variance.
+- **Parameter Sensitivity:** Document how VRF degrades as the option becomes deep out-of-the-money or as total volatility $\sigma \sqrt{T}$ increases.
+- **Artifacts:** `exp01_variance_reduction_table.json`, `exp01_convergence_rates.png`.
+
+---
+
+### Experiment EXP-02: Tail Risk Modeling Under Market Dislocations (EVT vs Gaussian)
+- **Phase Mapping:** Phase 4 (Quantitative Research Protocol, EVT & Tail Risk).
+- **Objective:** Quantify the extent of tail-risk underestimation by Gaussian parametric Value-at-Risk (VaR) relative to Historical, Student's t, and Extreme Value Theory (EVT/POT) models during market crises.
+- **Hypotheses:**
+  - $H_0$: Gaussian 99% 1-day VaR captures tail risk accurately during crash regimes (Kupiec POF test fails to reject, $p > 0.05$).
+  - $H_1$: Gaussian 99% VaR severely underestimates tail losses during market dislocations (Kupiec test rejects with $p < 0.001$), whereas EVT-POT significantly reduces the exception rate.
+- **Methodological Distinction (Unconditional vs Conditional EVT):**
+  - Unconditional Peaks-Over-Threshold (static threshold $u$) is compared against GARCH(1,1)-filtered conditional EVT.
+  - *Expected Empirical Finding:* Unconditional EVT will often fail the Christoffersen independence test ($p < 0.05$) during prolonged crashes like March 2020 due to volatility clustering, whereas conditional GARCH-EVT restores exception independence. Both results are reported with exact $p$-values and power caveats.
+- **Data Sets:** Synthetic Student's t ($\nu = 3$) return series; Historical daily returns during the 2008 Global Financial Crisis and 2020 COVID crash.
+- **Evaluation Metrics:** Kupiec Proportion of Failures (POF) Likelihood Ratio, Christoffersen Independence Likelihood Ratio, Expected Shortfall (CVaR).
+- **Artifacts:** `exp02_var_exceedance_plot.png`, `exp02_backtest_statistical_tests.json`, `exp02_evt_crash_backtest.md`.
+
+---
+
+### Experiment EXP-03: Linear vs Kernel vs Deep Learning in Volatility Forecasting
+- **Phase Mapping:** Phase 3 (Statistical Learning) & Phase 7 (Modern AI [STRETCH]).
+- **Objective:** Compare out-of-sample volatility forecasting performance across regularized linear models (Ridge/Lasso), Support Vector Regression (RBF SVR), Gaussian Processes, and Temporal Convolutional Networks (TCN).
+- **Hypotheses:**
+  - $H_0$: Non-linear deep models (TCN) and kernel methods do not improve out-of-sample volatility forecasting RMSE over a regularized linear AR baseline under walk-forward evaluation.
+  - $H_1$: Gaussian Processes with uncertainty quantification achieve superior predictive log-likelihood (CRPS), while TCNs improve directional volatility forecasts.
+- **Validation Protocol:** Chronological walk-forward split (rolling 5-year training window, 1-year test window, 5-day embargo). Candidate multiple-testing adjustments (Bonferroni, FDR, White's Reality Check).
+- **Scientific Reporting Rule:** If TCN or SVR fails to beat Ridge after accounting for computational complexity and multiple testing, this negative result is published with full ablation metrics.
+- **Evaluation Metrics:** Root Mean Squared Error (RMSE), Continuous Ranked Probability Score (CRPS), PIT calibration histograms, training latency.
+- **Artifacts:** `exp03_model_forecast_comparison.png`, `exp03_walk_forward_metrics.json`, `exp03_volatility_forecasting.md`.
+
+---
+
+### Experiment EXP-04: Diffusion Scenario Generation vs Stylized Fact Preservation [STRETCH]
+- **Phase Mapping:** Phase 7 (Modern AI: Transformers & Diffusion [STRETCH]).
+- **Objective:** Test whether a 1D Denoising Diffusion Probabilistic Model (DDPM) can generate synthetic financial return paths that faithfully preserve empirical stylized facts, compared to parametric Merton Jump-Diffusion models.
+- **Preliminary Toy Validation:** Must first verify sampling on a 1D Gaussian / Gaussian-mixture target where generated sample mean and variance match analytical values within budget-derived $z \times \text{SE}$ ($z \approx 3.29$). No monotonic loss requirement is imposed.
+- **Hypotheses:**
+  - $H_0$: Diffusion-generated paths fail to reproduce empirical stylized facts (autocorrelation of squared returns is indistinguishable from white noise, $p > 0.05$).
+  - $H_1$: Diffusion paths successfully reproduce heavy tails (excess kurtosis $> 2.0$) and significant volatility clustering (Ljung-Box test on squared returns $p < 0.01$).
+- **Data Sets:** Daily return series (historical index proxies).
+- **Evaluation Metrics:** Autocorrelation Function (ACF) of squared returns, Fréchet Time-Series Distance (FTD), empirical vs synthetic excess kurtosis and skewness, Kolmogorov-Smirnov distance between marginal distributions.
+- **Failure Mode Audit:** If the DDPM exhibits mode collapse, generates unrealistic spikes, or fails to preserve serial volatility clustering, the failure mode is diagnosed and recorded in `failed_hypotheses_registry.json`.
+- **Artifacts:** `exp04_stylized_facts_comparison.png`, `exp04_diffusion_fidelity_metrics.json`, `exp04_diffusion_stylized_facts.md`.
+
+---
+
+### Experiment EXP-05: Risk-Sensitive Bandits Under Heavy-Tailed Return Shocks
+- **Phase Mapping:** Phase 6 (Bandits & Sequential Decision-Making).
+- **Objective:** Evaluate risk-sensitive multi-armed bandit policies (CVaR-UCB and robust Mean-CVaR) against risk-neutral UCB1 and Thompson Sampling in selecting among financial assets subject to rare catastrophic drawdowns.
+- **Hypotheses:**
+  - $H_0$: Risk-sensitive bandits achieve identical worst-case portfolio drawdowns compared to risk-neutral UCB1 under Pareto-distributed shocks.
+  - $H_1$: CVaR-UCB reduces the worst 5% drawdown of cumulative rewards compared to standard UCB1 at the cost of bounded regret growth.
+- **Simulation Setup:** 10-armed bandit environment where arms have identical expected values but differing tail indices (some arms subject to Pareto shocks with tail index $\alpha \in [1.5, 2.5]$). Evaluated across multiple random seeds and baseline algorithms (random, greedy, $\epsilon$-greedy, UCB1).
+- **Evaluation Metrics:** Worst-case 5% Drawdown, Cumulative Pseudo-Regret, 95% CVaR of cumulative wealth, Arm Selection Stability across risk tolerance parameter $\alpha$.
+- **Artifacts:** `exp05_risk_bandit_drawdowns.png`, `exp05_regret_and_tail_risk.json`, `exp05_risk_sensitive_bandits.md`.
+
+---
+
+### Experiment EXP-06: Robust Optimization vs Naive Diversification ($1/N$) Under Friction
+- **Phase Mapping:** Phase 5 (Portfolio Optimization, Constraints & Transaction Costs).
+- **Objective:** Test whether constrained and robust Markowitz portfolio optimization (with Ledoit-Wolf shrinkage and ellipsoidal uncertainty sets) beats naive $1/N$ diversification out-of-sample under realistic transaction costs.
+- **Hypotheses:**
+  - $H_0$: Out-of-sample Net Sharpe ratio of Markowitz optimization under transaction costs does not exceed the naive $1/N$ allocation (DeMiguel, Garlappi, Uppal 2009 phenomenon).
+  - $H_1$: Robust optimization incorporating Ledoit-Wolf shrinkage and an explicit $\ell_1$ turnover penalty closes the turnover gap and outperforms $1/N$ in net Sharpe ratio.
+- **Friction Modeling:** Quadratic market-impact cost and linear bid-ask spread penalties must be included in all backtests.
+- **Universe:** 25 large-cap equities over historical multi-year horizon.
+- **Evaluation Metrics:** Net Annualized Sharpe Ratio, Maximum Drawdown, Annualized Portfolio Turnover, Herfindahl Diversification Index.
+- **Literature Alignment:** A finding that standard Markowitz underperforms $1/N$ while robust shrinkage reduces turnover drag confirms canonical portfolio literature and is reported in detail.
+- **Artifacts:** `exp06_net_wealth_curves.png`, `exp06_turnover_vs_sharpe.json`, `exp06_robust_vs_naive.md`.
+
+---
+
+### Experiment EXP-07: Deep Reinforcement Learning vs Risk-Aware Bandits for Allocation [STRETCH]
+- **Phase Mapping:** Phase 6 (Sequential Allocation & DRL [STRETCH]).
+- **Objective:** Compare a continuous-action Proximal Policy Optimization (PPO) agent against risk-aware contextual bandits and static shrinkage Markowitz policies in dynamic asset allocation.
+- **Hypotheses:**
+  - $H_0$: A deep reinforcement learning agent trained with a standard cumulative return reward function suffers severe policy degradation during market regime transitions.
+  - $H_1$: Incorporating a downside-volatility penalty in the reward function stabilizes policy weights and prevents catastrophic drawdown during market crashes.
+- **Environments:** Simulated bull/bear regime-switching market; Historical 2020 market crash.
+- **Evaluation Metrics:** Out-of-sample Sortino Ratio, Calmar Ratio, Policy Weight Entropy, Rebalancing Cost Drag.
+- **Artifacts:** `exp07_drl_policy_allocation.png`, `exp07_reinforcement_learning_tearsheet.json`.
+
+---
+
+## 3. Multiple Testing & Data Snooping Protocol (Options Framework)
+
+When evaluating multiple trading signals, factor candidates, or model hyperparameters, naive $p$-values generate widespread false discoveries. Rather than treating one method as settled, QUANTFORGE X implements multiple testing adjustments as **candidate options**:
+
+1. **Option A: Bonferroni / Holm-Bonferroni Correction:**
+   Conservative control of Family-Wise Error Rate (FWER):
+   $$\alpha_{\text{adjusted}} = \frac{\alpha_{\text{target}}}{M}$$
+2. **Option B: Benjamini-Hochberg False Discovery Rate (FDR):**
+   Controls the expected proportion of false discoveries among rejected hypotheses:
+   $$P_{(k)} \le \frac{k}{M} q^*$$
+3. **Option C: Deflated Sharpe Ratio / White's Reality Check:**
+   Accounts for the number of trials $M$, variance of trials, skewness, and kurtosis to compute the probability that the best observed Sharpe ratio occurred purely by luck:
+   $$\text{DSR} = \Phi\left( \frac{(\widehat{\text{SR}} - \text{SR}_0)\sqrt{T-1}}{\sqrt{1 - \hat{\gamma}_3 \widehat{\text{SR}} + \frac{\hat{\gamma}_4 - 1}{4}\widehat{\text{SR}}^2}} \right)$$
+
+---
+
+## 4. Mandatory Rejection & Failed Hypothesis Tracking
+
+To maintain scientific honesty, failed experiments are treated as primary research deliverables rather than errors to be hidden. Every non-viable result is recorded in the **Failed Hypotheses Registry** (`failed_hypotheses_registry.json`) documenting:
+- Theoretical motivation.
+- Architecture / algorithm tested.
+- Observed failure mode (e.g., overfitting, high turnover eating alpha, mode collapse in diffusion, non-convergence of gradient descent).
+- Methodological conclusion and negative recommendations.

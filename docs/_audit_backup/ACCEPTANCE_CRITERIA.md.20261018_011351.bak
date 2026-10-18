@@ -1,0 +1,137 @@
+# ACCEPTANCE CRITERIA & SCIENTIFIC DEFINITION OF DONE
+
+**QUANTFORGE X — Quantitative Verification Standards, Tolerances & Audit Checklist**
+
+---
+
+## 1. Global Definition of Done (DoD) & Criteria Classification
+
+A component, module, or research experiment in **QUANTFORGE X** is formally considered **DONE** if and only if all applicable requirements across the six standardized criteria classes are satisfied:
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    CRITERIA TAXONOMY FRAMEWORK                                     |
++----------------------------------------------------------------------------------------------------+
+  1. [MATH_INVARIANT]   Analytical identity or conservation law (Strict floating-point tolerance).
+  2. [NUM_TOLERANCE]    Numerical approximation governed by asymptotic convergence rate (Pass/Fail).
+  3. [STAT_VALIDATION]  Statistical algorithm property on synthetic data with known ground truth.
+  4. [EMP_HYPOTHESIS]   Empirical hypothesis on market data (Scientific outcome; negative results OK).
+  5. [PERF_BENCHMARK]   Computational latency, memory limits, and hardware constraints.
+  6. [DOC_REPRO]        Cryptographic hash registry, seed logging, and failure documentation.
++----------------------------------------------------------------------------------------------------+
+```
+
+### Key Scientific Principle:
+**Only use PASS/FAIL gates where failure indicates incorrect software implementation or an unmet engineering requirement.** Empirical research outcomes (e.g. whether a Transformer outperforms Ridge, whether unconditional EVT passes Christoffersen tests during a market shock, or whether CVaR-UCB beats UCB1 on a specific historical dataset) must **never** be used as pass/fail build gates. A documented, statistically sound negative result is a primary research deliverable.
+
+---
+
+## 2. Quantitative Tolerances & Audited Benchmarks
+
+| Domain / Component | Verification Test | Benchmark / Ground Truth | Class | Mandatory Tolerance / Threshold | Verification Tool / Script |
+|:---|:---|:---|:---:|:---:|:---|
+| **Black-Scholes Pricing** | Put-Call Parity Identity | Analytical Identity: $C - P = S - K e^{-rT}$ | `[MATH_INVARIANT]` | $|C - P - (S - K e^{-rT})| < 10^{-12}$ | `test_black_scholes.py` |
+| **Option Greeks** | Analytical vs Finite Difference | Analytical derivatives $(\Delta, \Gamma, \Theta, \mathcal{V}, \rho)$ | `[NUM_TOLERANCE]` | Relative discrepancy $< 10^{-4}$ on interior grid | `test_greeks.py` |
+| **Monte Carlo Pricing** | Deterministic Regression Test | Precomputed price with fixed seed & library version | `[DOC_REPRO]` | $|\hat{C}_{MC} - C_{\text{expected}}| < 10^{-6}$ for fixed seed | `test_monte_carlo.py` |
+| **Monte Carlo Coverage** | Repeated 99% CI Coverage | True Black-Scholes analytical price | `[STAT_VALIDATION]` | Exact binomial band with $\alpha_{\text{fail}}=10^{-3}$: $k \ge 192$ (coverage $\ge 96.0\%$, $P=2.13 \times 10^{-4}$) for $R=200$; proposed $k \ge 979$ (coverage $\ge 97.9\%$, $P=6.52 \times 10^{-4}$) for $R=1,000$ | `test_mc_coverage.py` |
+| **Monte Carlo Rate** | Asymptotic Error Decay Rate | Theoretical CLT: $\text{RMSE} \propto N^{-0.5}$ | `[NUM_TOLERANCE]` | Theoretical slope $-0.5$ lies within $[\hat{\text{slope}} \pm z \times \text{SE}]$ ($z \approx 3.29$, $\alpha_{\text{check}}=10^{-3}$); informativeness condition: $\text{SE} \le 0.05$ across batch fits | `test_mc_convergence.py` |
+| **Itô Identity (Pathwise)**| Discrete vs Analytical Discrepancy| Invariant: $I_{\text{disc}} - \frac{1}{2}(W_T^2-T) \equiv \frac{1}{2}(T - \sum (\Delta W)^2)$ | `[MATH_INVARIANT]` | Relative error $\le 10 \times \epsilon_{\text{mach}} \times M \times \max(1, W_T^2)$ on every simulated path | `test_ito.py` |
+| **Itô Discrepancy ($L^2$)**| Ensemble Quadratic Variation Discrepancy | Theoretical $L^2$ error: $\sqrt{T \Delta t / 2}$ | `[NUM_TOLERANCE]` | Theoretical slope $0.5$ inside $[\hat{\text{slope}} \pm z \times \text{SE}]$ ($z \approx 3.29$, $\alpha_{\text{check}}=10^{-3}$); informativeness condition: $\text{SE} \le 0.05$ across batch fits | `test_ito.py` |
+| **SDE Strong Error** | Strong Convergence on 1D GBM | Exact closed-form strong error coupling on $N \in \{16, 32, 64, 128, 256\}$ | `[NUM_TOLERANCE]` | Fitted MC slope agrees with exact strong error slope within $z \times \text{SE}$ ($z \approx 3.29$); informativeness $\text{SE} \le 0.05$; negative control rejects wrong order | `test_sde_solvers.py` |
+| **SDE Weak Error (Formula)** | Deterministic Second Moment Error | Exact moment recursions for $g(x)=x^2$ vs $x_0^2 e^{(2\mu+\sigma^2)T}$ | `[MATH_INVARIANT]` | Deterministic log-log slope of error vs $h$ in $[0.90, 1.10]$ (analytical formula check; does NOT exercise solver code) | `test_sde_solvers.py` |
+| **SDE Weak Moment (`M1-SDE-05`)** | Numerical Solver Second Moment Sample Mean | Discrete scheme moment $x_0^2 [f(h)]^N$ | `[STAT_VALIDATION]` | $|\overline{X_N^2} - x_0^2 [f(h)]^N| \le z \times S(X_N^2)/\sqrt{P}$ ($z \approx 3.29$, $\alpha_{\text{check}}=10^{-3}$); exercises solver code directly | `test_sde_solvers.py` |
+| **Variance Reduction** | Antithetic & Control Variates | Crude Monte Carlo variance on pinned contract | `[STAT_VALIDATION]` | Reported VRF with empirical standard error from repeated batches; threshold to be set from a recorded pilot measurement (seed, N, estimate, uncertainty); not yet measured | `test_variance_reduction.py` |
+| **Heavy-Tail Index** | Hill Estimator on Synthetic Pareto | Ground-truth Pareto parameter $\alpha = 2.5$ | `[STAT_VALIDATION]` | Error within $z$ asymptotic SDs: $|\hat{\alpha} - \alpha| / \alpha \le z/\sqrt{k}$ ($z \approx 3.29$, $k=1000, n=50k \implies \le 10.4\%$) | `test_heavy_tails.py` |
+| **EVT Kupiec / Christoffersen**| Test Statistic Implementation | Independently produced Likelihood Ratio fixtures (hand-derived formula or recorded external reference) | `[STAT_VALIDATION]` | $|LR_{\text{calc}} - LR_{\text{fixture}}| / LR_{\text{fixture}} < 10^{-8}$ | `test_evt_backtest.py` |
+| **EVT Crisis Backtest** | 99% VaR on 2008 / 2020 Crises | Historical crash returns (GFC, COVID) | `[EMP_HYPOTHESIS]` | Unconditional vs conditional GARCH-EVT evaluated; exception clusters and limitations documented | `exp02_var_report.md` |
+| **Gaussian Process (Synthetic)**| Posterior Coverage under Prior | Synthetic samples drawn from GP prior | `[STAT_VALIDATION]` | Empirical coverage of 95% intervals across independent datasets inside exact binomial band | `test_gaussian_process.py` |
+| **Gaussian Process (Market)**| Empirical Uncertainty Calibration | Historical out-of-sample volatility | `[EMP_HYPOTHESIS]` | Evaluated via PIT uniformity histogram, coverage-vs-nominal curves, and CRPS | `gp_calibration_study.md` |
+| **Kernel Gram Matrix** | Mercer Positive Semi-Definiteness | RKHS theorem: $v^T K v \ge 0$ | `[MATH_INVARIANT]` | Minimum eigenvalue $\lambda_{\min}(K) \ge -10^{-10}$ with diagonal jitter $\epsilon=10^{-8}$ | `test_kernels.py` |
+| **Convex Optimization** | KKT Optimality & Status Audit | CVXPY solution with OSQP (`eps_abs=1e-7, eps_rel=1e-7`) | `[NUM_TOLERANCE]` | Solver status `OPTIMAL`; primal residual $\le 10^{-6}$; dual residual $\le 10^{-6}$; duality gap $\le 10^{-5}$ | `test_convex_opt.py` |
+| **Markowitz 2-Asset** | Numerical vs Analytical Weights | Closed-form formula $w_1^* = (\sigma_2^2 - \sigma_{12}) / (\sigma_1^2 + \sigma_2^2 - 2\sigma_{12})$ | `[MATH_INVARIANT]` | Unconstrained weight error $< 10^{-7}$; boundary projection verified when $\sigma_{12} > \sigma_2^2$ or $\sigma_{12} > \sigma_1^2$ | `test_markowitz.py` |
+| **Securitized Waterfall** | Cash-Flow Conservation Law | Total collateral cash inflow | `[MATH_INVARIANT]` | Inflow $\equiv \sum \text{Tranches} + \text{Losses}$ within floating-point relative tolerance $10^{-8}$ | `test_securitization.py` |
+| **MAB Regret Growth** | UCB1 Theoretical Regret Bound | Mean pseudo-regret across $M=100$ runs vs Auer (2002) | `[STAT_VALIDATION]` | Mean regret bounded by explicit finite-time bound $R(T) \le \sum \frac{8 \ln T}{\Delta_i} + (1 + \pi^2/3)\sum \Delta_i$ | `test_mab.py` |
+| **Risk-Sensitive Bandit** | CVaR-UCB vs UCB1 Drawdown | Pareto-shocked arm reward distributions | `[EMP_HYPOTHESIS]` | Worst 5% drawdown and CVaR evaluated across risk parameter $\alpha$ against greedy/UCB1 baselines | `exp05_risk_bandits.md` |
+| **Diffusion Scenarios (Toy)**| Moment Match on 1D Gaussian Target | Analytical moments of 1D Gaussian / mixture | `[NUM_TOLERANCE]` | Sample mean and variance match true target within $z \times \text{SE}$ ($z \approx 3.29$); finite outputs | `test_diffusion.py` |
+| **Diffusion Scenarios (Market)**| Stylized Facts Preservation | Real daily index returns | `[EMP_HYPOTHESIS]` | Kurtosis and squared-return ACF evaluated; mode collapse or fidelity failures logged in registry | `exp04_diffusion.md` |
+| **Temporal Causality** | Deep Learning Causal Masking | Gradient w.r.t. future inputs $\partial y_t / \partial x_{t+k}$ | `[MATH_INVARIANT]` | $\partial y_t / \partial x_{t+k} \equiv 0$ for all $k > 0$ strictly | `test_causality.py` |
+| **Anti-Leakage Guard** | Chronological Data Split Invariant | Train/Test timestamp arrays | `[MATH_INVARIANT]` | $\max(\text{train\_indices}) < \min(\text{test\_indices})$ strictly | `test_leakage_guard.py` |
+| **Multiple Testing** | Family-Wise Error Rate Control | $m=100$ independent white-noise series | `[STAT_VALIDATION]` | Bonferroni FWER $\approx 0.0488$; exact binomial upper threshold for $\alpha_{\text{fail}}=10^{-3}$: $k \le 20$ for $R=200$; proposed $k \le 71$ for $R=1,000$ (lower bound removed; low FWER is not a failure) | `test_multiple_testing.py` |
+| **Local Reproducibility** | Local Exact Seed Reproducibility | Identical random seed, library build & OS | `[DOC_REPRO]` | Bitwise identical outputs on identical local environment | `test_reproducibility.py` |
+| **Cross-Platform Consistency**| Numerical Reproducibility | Different hardware/OS platforms | `[NUM_TOLERANCE]` | Float64 outputs match within $\text{rtol}=10^{-9}$ and $\text{atol}=10^{-12}$ | `test_reproducibility.py` |
+
+---
+
+## 3. Milestone 1 Definition of Done Checklist
+
+Every requirement for **Milestone 1: Reproducible Stochastic Foundations** is assigned an auditable identifier prefixed `M1-` with status **NOT STARTED**.
+
+| ID | Module / Focus | Requirement Description | Class | Pass Condition | Verification Method | Status |
+|:---|:---|:---|:---:|:---|:---|:---:|
+| **M1-SCAF-01** | `quantforge.core` | Minimal package layout and standard-library / minimal configuration handler | `[DOC_REPRO]` | Clean import, valid config loading, no reliance on Pydantic/PyTorch | FAST unit test | NOT STARTED |
+| **M1-SCAF-02** | `quantforge.core` | Centralized seeded RNG utility using NumPy `Generator` with `PCG64` and `SeedSequence` | `[DOC_REPRO]` | Deterministic streams; parallel streams use `SeedSequence.spawn()`; no global seed | FAST unit test | NOT STARTED |
+| **M1-SCAF-03** | `quantforge.core` | Experiment-record format logging config, seed, SeedSequence entropy, versions, metrics | `[DOC_REPRO]` | Complete JSON manifest produced and validated against schema | FAST unit test | NOT STARTED |
+| **M1-SCAF-04** | Test Harness | Pytest markers separating FAST unit tests from SLOW validation experiments | `[DOC_REPRO]` | `pytest -m fast` executes only fast tests; runtime budget proposal pending measurement | FAST unit test | NOT STARTED |
+| **M1-MC-01** | Monte Carlo | Basic Monte Carlo estimator with CLT confidence interval construction on $E[S_T]$ | `[MATH_INVARIANT]` | CI boundaries algebraically correct: $[\hat{\mu} \pm z_{1-\alpha/2} S_N / \sqrt{N}]$ | FAST unit test | NOT STARTED |
+| **M1-MC-02** | Monte Carlo | Repeated-experiment coverage test on known target $E[S_T] = S_0 e^{\mu T}$ (no options) | `[STAT_VALIDATION]` | Coverage across $R$ trials falls inside exact binomial band ($k \ge 192$ for $R=200$, $k \ge 979$ for $R=1000$ for $\alpha_{\text{fail}}=10^{-3}$) | SLOW experiment | NOT STARTED |
+| **M1-BM-01** | Brownian Motion | Brownian motion path simulation with increment property checks | `[STAT_VALIDATION]` | Increments mean zero, variance $dt$, lag-1 correlation zero within budget-derived $z \times \text{SE}$ ($z \approx 3.29$) | FAST unit test | NOT STARTED |
+| **M1-BM-02** | Brownian Motion | Quadratic variation experiment: $\sum (\Delta W)^2$ has mean $T$ and variance $2T^2/N$ | `[STAT_VALIDATION]` | Sample mean and sample variance match theoretical values within budget-derived $z \times \text{SE}$ ($z \approx 3.29$) | SLOW experiment | NOT STARTED |
+| **M1-GBM-01** | Geometric BM | Exact analytical solution $S_t = S_0 \exp((\mu - 0.5\sigma^2)t + \sigma W_t)$ implementation | `[MATH_INVARIANT]` | Exact path evaluation matches formula to floating-point relative tolerance $10^{-12}$ | FAST unit test | NOT STARTED |
+| **M1-GBM-02** | Geometric BM | Exact first and second moment checks: $E[S_T] = S_0 e^{\mu T}$, $E[S_T^2] = S_0^2 e^{(2\mu+\sigma^2)T}$ | `[STAT_VALIDATION]` | Sample moments over $P=10,000$ paths match analytical moments within budget-derived $z \times \text{SE}$ ($z \approx 3.29$) | FAST unit test | NOT STARTED |
+| **M1-SDE-01** | SDE Solvers | Vectorized Euler-Maruyama and Milstein numerical solvers for 1D autonomous SDEs | `[NUM_TOLERANCE]` | Output shape, finite float64 values, interface compliance | FAST unit test | NOT STARTED |
+| **M1-SDE-02** | SDE Strong Error | Strong convergence order experiment on 1D GBM driven by identical Brownian increments | `[NUM_TOLERANCE]` | Fitted slope agrees with exact strong error slope on $N \in \{16, 32, 64, 128, 256\}$ within $z \times \text{SE}$ ($z \approx 3.29$); informativeness $\text{SE} \le 0.05$ | SLOW experiment | NOT STARTED |
+| **M1-SDE-03** | SDE Negative Control | Negative control test asserting test harness rejects deliberately wrong claimed order | `[NUM_TOLERANCE]` | Harness correctly raises failure when asserting order 1.0 for Euler-Maruyama | FAST unit test | NOT STARTED |
+| **M1-SDE-04** | SDE Weak Reference | Deterministic weak error verification via exact second-moment recursions on GBM | `[MATH_INVARIANT]` | Log-log slope of error vs $h$ in $[0.90, 1.10]$ for both Euler and Milstein (analytical formula check; does NOT exercise solver code) | FAST unit test | NOT STARTED |
+| **M1-SDE-05** | SDE Weak Solver Check | Numerical solver second moment sample mean agreement with discrete moment | `[STAT_VALIDATION]` | Sample mean $\overline{X_N^2}$ matches exact discrete moment $x_0^2 [f(h)]^N$ within $z \times S(X_N^2)/\sqrt{P}$ ($z \approx 3.29$, $\alpha_{\text{check}}=10^{-3}$) | SLOW experiment | NOT STARTED |
+| **M1-ITO-01** | Itô Calculus | Pathwise algebraic identity $I_{\text{disc}} - 0.5(W_T^2-T) \equiv 0.5(T - \sum (\Delta W)^2)$ | `[MATH_INVARIANT]` | Identity holds on every simulated path within relative tolerance $10 \times \epsilon_{\text{mach}} \times M$ | FAST unit test | NOT STARTED |
+| **M1-ITO-02** | Itô Calculus | Ensemble RMS error $\left\| I_{\text{disc}} - 0.5(W_T^2-T) \right\|_{L^2}$ scales as $\sqrt{T \Delta t / 2}$ | `[NUM_TOLERANCE]` | Fitted slope contains 0.5 inside budget-derived interval $[\hat{\text{slope}} \pm z \times \text{SE}]$ ($z \approx 3.29$); slope $\text{SE} \le 0.05$ | SLOW experiment | NOT STARTED |
+| **M1-DOC-01** | Artifacts | Reproducible benchmark script exporting JSON metrics and convergence figures | `[DOC_REPRO]` | Artifacts generated with seed manifest, entropy, git commit (if any), versions | SLOW experiment | NOT STARTED |
+
+---
+
+## 4. Phase-by-Phase Sign-off Checklist for Subsequent Phases (Phases 2 to 8)
+
+### Phase 2: Financial Engineering & Option Pricing [CORE]
+- [ ] `[MATH_INVARIANT]` `test_black_scholes.py`: Closed-form call/put prices satisfy Put-Call parity within $10^{-12}$.
+- [ ] `[NUM_TOLERANCE]` `test_greeks.py`: Closed-form Greeks match numerical finite-difference derivatives within $10^{-4}$.
+- [ ] `[STAT_VALIDATION]` `test_variance_reduction.py`: Measured VRF reported with empirical standard error from repeated batches; pilot measurement recorded.
+
+### Phase 2 (Sub-phase 2.3): Educational Securitization Waterfall [STRETCH]
+*(Separate gate; not required for Phase 2 CORE sign-off).*
+- [ ] `[MATH_INVARIANT]` `test_securitization.py`: Collateral cash-flow conservation holds strictly across all tranches (`[STRETCH]` module).
+
+### Phase 3: Statistical & Kernel Learning [CORE]
+- [ ] `[NUM_TOLERANCE]` `test_regression.py`: Ridge and Lasso shrinkage paths trace expected coordinate descent trajectories.
+- [ ] `[MATH_INVARIANT]` `test_kernels.py`: Mercer positive semi-definiteness verified for Linear, RBF, and Matérn Gram matrices ($\lambda_{\min} \ge -10^{-10}$).
+- [ ] `[STAT_VALIDATION]` `test_gaussian_process.py`: Synthetic GP coverage matches nominal levels across independent datasets.
+- [ ] `[NUM_TOLERANCE]` `test_gp_interpolation.py`: Exact GP posterior mean matches noise-free synthetic function within $10^{-4}$.
+
+### Phase 4: Quantitative Research Protocol, EVT Risk & Tail Estimation [CORE]
+- [ ] `[MATH_INVARIANT]` `test_walk_forward.py`: Chronological walk-forward splits verified with purging and embargo windows.
+- [ ] `[MATH_INVARIANT]` `test_leakage_guard.py`: Synthetic look-ahead injection triggers immediate automated test failure.
+- [ ] `[STAT_VALIDATION]` `test_multiple_testing.py`: Multiple testing adjustments control FWER/FDR within exact binomial bounds on synthetic noise.
+- [ ] `[STAT_VALIDATION]` `test_heavy_tails.py`: Hill estimator on synthetic Pareto recovers true $\alpha$ within $z/\sqrt{k}$ tolerance ($z \approx 3.29$).
+- [ ] `[STAT_VALIDATION]` `test_evt_fixtures.py`: Kupiec POF and Christoffersen likelihood ratio test statistics match numerical fixtures.
+- [ ] `[EMP_HYPOTHESIS]` `exp02_evt_crash_backtest.md`: Unconditional and conditional EVT evaluated on historical crashes; limitations documented.
+
+### Phase 5: Portfolio Optimization, Constraints & Transaction Costs [CORE]
+- [ ] `[NUM_TOLERANCE]` `test_convex_opt.py`: Markowitz solver verifies KKT conditions with primal residual $\le 10^{-6}$ and status `OPTIMAL`.
+- [ ] `[MATH_INVARIANT]` `test_markowitz_analytical.py`: Numerical solution matches 2-asset formula with $\sigma_{12}$ and boundary handling.
+- [ ] `[MATH_INVARIANT]` `test_transaction_costs.py`: Adding transaction cost penalty monotonically reduces portfolio turnover.
+- [ ] `[EMP_HYPOTHESIS]` `exp06_robust_vs_naive.md`: Robust Markowitz optimization compared out-of-sample against naive $1/N$ diversification.
+
+### Phase 6: Bandits & Sequential Decision-Making [CORE & STRETCH]
+- [ ] `[STAT_VALIDATION]` `test_mab.py`: UCB1 and Thompson Sampling exhibit cumulative pseudo-regret bounded by Auer et al. (2002) finite-time bound.
+- [ ] `[MATH_INVARIANT]` `test_environment.py`: Financial trading MDP deducts transaction costs strictly according to schedule.
+- [ ] `[MATH_INVARIANT]` `test_drl_portfolio.py`: PPO policy allocations project strictly onto probability simplex (`[STRETCH]`).
+- [ ] `[EMP_HYPOTHESIS]` `exp05_risk_sensitive_bandits.md`: Worst 5% drawdown and CVaR of risk-sensitive bandits compared against UCB1 under heavy-tailed Pareto shocks.
+
+### Phase 7: Modern AI: Attention, Transformers & Diffusion [STRETCH]
+- [ ] `[MATH_INVARIANT]` `test_causality.py`: TCN and Transformer models pass zero-leakage causal gradient checks ($\partial y_t / \partial x_{t+k} \equiv 0$).
+- [ ] `[NUM_TOLERANCE]` `test_diffusion_toy.py`: 1D temporal DDPM reproduces mean and variance on analytical Gaussian target within budget-derived $z \times \text{SE}$ ($z \approx 3.29$).
+- [ ] `[EMP_HYPOTHESIS]` `exp04_diffusion_stylized_facts.md`: Statistical fidelity of generated scenarios evaluated on fat tails and volatility clustering; failure modes documented.
+
+### Phase 8: Offline Dashboard & End-to-End Reproducibility [CORE]
+- [ ] `[DOC_REPRO]` `test_dashboard_artifacts.py`: Dashboard successfully parses and renders real artifacts from all experiments without mock data.
+- [ ] `[DOC_REPRO]` `test_full_replication.py`: Single master script executes end-to-end pipeline and reproduces all figures and metrics.
+- [ ] `[DOC_REPRO]` `failed_hypotheses_registry.json`: All rejected hypotheses, degraded regimes, and ablation findings fully cataloged.

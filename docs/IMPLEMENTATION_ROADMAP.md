@@ -1,0 +1,231 @@
+# IMPLEMENTATION ROADMAP & PHASE DEPENDENCY PLAN
+
+**QUANTFORGE X — Sequential Phased Execution, Dependency Graph & Milestones**
+
+---
+
+## 1. Execution Principles & Phase Dependencies
+
+QUANTFORGE X is executed strictly in sequential phases. No downstream phase may commence until all entry gates, unit tests, and mathematical acceptance criteria of its prerequisite phases have passed. No phases run in parallel.
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    REVISED PHASE DEPENDENCY GRAPH                                  |
++----------------------------------------------------------------------------------------------------+
+
+  [Phase 0: Planning and Scientific Audit] (PHASE 0.4 AUDIT IN PROGRESS / PENDING REVIEW)
+                         |
+                         v
+  [Phase 1: Reproducible Stochastic Foundations (Milestone 1)] [CORE]
+                         |
+                         v
+  [Phase 1.1: The Probability Toolkit (Milestone 1.1)] [CORE]
+  (Distributions, MLE, Conditional Probability, LLN/CLT, Markov Chains)
+                         |
+                         v
+  [Phase 2: Financial Engineering and Option Pricing] [CORE]
+  (Securitized-Product Modelling is [STRETCH] inside Phase 2)
+                         |
+                         v
+  [Phase 3: Statistical and Kernel Learning, Synthetic Data First] [CORE]
+                         |
+                         v
+  [Phase 4: Quantitative Research Protocol, Validation Framework,
+            Data Provenance, VaR/CVaR, EVT, Heavy-Tail Estimation (Hill)] [CORE]
+                         |
+                         v
+  [Phase 5: Portfolio Optimization, Constraints, Transaction Costs] [CORE]
+                         |
+                         v
+  [Phase 6: Bandits and Sequential Decision-Making]
+            - Multi-Armed Bandits [CORE]
+            - MDPs, Reinforcement Learning, Risk-Aware RL [STRETCH, conditional on Phases 4 & 5]
+                         |
+                         v
+  [Phase 7: Modern AI: Neural Networks, Attention, Transformers, Diffusion]
+            [STRETCH, conditional on Phases 3 & 4 being verified]
+                         |
+                         v
+  [Phase 8: Offline Dashboard & End-to-End Reproducibility] [CORE]
+            (Displays results only from real experiment records)
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 2. Phase-by-Phase Roadmap, Prerequisites & Gates
+
+### Phase 0: Planning and Scientific Audit
+- **Status:** Phase 0.4 audit in progress, pending independent review.
+- **Entry Gate:** None.
+- **Exit Gate:** Formal user sign-off on audited specifications and approval of Milestone 1 proposals.
+
+---
+
+### Phase 1: Reproducible Stochastic Foundations (Milestone 1) [CORE]
+- **Prerequisites:** Phase 0 exit gate passed.
+- **Scope & Exclusions:**
+  - **INCLUDED:** Scaffolding, configuration handling (standard-library/minimal), deterministic seeded RNG utility (`SeedSequence` + `PCG64`), Monte Carlo on $E[S_T]$, Brownian motion path simulation & quadratic variation, Geometric Brownian Motion exact moments, Euler-Maruyama & Milstein deterministic step invariant (`M1-SDE-06`) and strong/weak error verification, and Itô pathwise identity.
+  - **EXCLUDED:** Real market data, option pricing, machine learning, optimization, dashboard, network access, heavy third-party frameworks (no PyTorch, no Pydantic, no cloud).
+- **Exit Gate:** All `M1-` requirements verified pass; fast unit test suite passes in proposed budget; convergence slope Student-$t$ tests satisfy informativeness; negative control test passes; deterministic weak error matches analytical factor; deterministic step invariant matches machine precision.
+
+---
+
+### Phase 1.1: The Probability Toolkit (Milestone 1.1) [CORE]
+- **Prerequisites:** Phase 1 exit gate passed.
+- **Scope:**
+  - Parametric distribution fitting and Maximum Likelihood Estimation (MLE) parameter recovery (Gaussian, Student's t, Log-normal, Pareto).
+  - Conditional probability and Bayes' law numerical validation on discrete and continuous state spaces.
+  - Law of Large Numbers (LLN) and Central Limit Theorem (CLT) empirical convergence rate demonstrations.
+  - Discrete & Continuous-Time Markov Chains: transition probability matrix estimation, Chapman-Kolmogorov equations, row-stochasticity invariant ($\sum_j P_{ij} = 1$), and stationary distribution convergence ($|\pi P - \pi| < 10^{-12}$).
+- **Exit Gate:** KS-tests on synthetic variates yield $p > 0.05$; MLE parameter estimates match known synthetic ground truth within asymptotic error; Markov transition row stochasticity and stationary invariants verified.
+
+---
+
+### Phase 2: Financial Engineering and Option Pricing [CORE]
+- **Prerequisites:** Phase 1 and Phase 1.1 verified pass.
+- **Scope:** Vectorized return representations (log, simple), cash-flow accounting, Black-Scholes analytical pricing and closed-form Greeks, Monte Carlo option pricing on European & path-dependent contracts, variance reduction (Antithetic and Control Variates with uncertainty estimation).
+- **Sub-Phase 2.1 [STRETCH]:** Securitized product cash-flow waterfall modeling (Senior/Mezzanine/Equity tranches, CPR prepayment, and default hazard rates) using synthetic collateral pools.
+- **Exit Gate [CORE]:** Put-Call parity holds within $10^{-12}$; Monte Carlo coverage falls inside exact binomial band; pilot VRF measurement recorded with empirical SE.
+- **Exit Gate [STRETCH - Sub-Phase 2.1]:** Waterfall cash flows strictly conserve collateral cash across all tranches. *(Separate gate; not required for Phase 2 CORE exit gate).*
+
+---
+
+### Phase 3: Statistical and Kernel Learning (Synthetic Data First) [CORE]
+- **Prerequisites:** Phase 1 and Phase 2 verified pass.
+- **Scope:** Regularized linear models (OLS, Ridge, Lasso, ElasticNet), Support Vector Regression/Classification, Reproducing Kernel Hilbert Spaces (RKHS) and Gram matrix positive semi-definiteness, exact Gaussian Process regression on synthetic data drawn from prior with PIT calibration histograms and CRPS.
+- **Exit Gate:** Gram matrices satisfy Mercer condition ($\lambda_{\min} \ge -10^{-10}$); GP credible intervals achieve exact binomial coverage on synthetic prior samples; coordinate descent paths verified.
+
+---
+
+### Phase 4: Quantitative Research Protocol, Validation Framework, Data Provenance, VaR/CVaR, EVT, Heavy-Tail Estimation [CORE]
+- **Prerequisites:** Phase 3 verified pass.
+- **Scope:** Chronological walk-forward engine with purging and embargo windows; immutable point-in-time feature store; anti-leakage runtime guard; coherent risk measures (VaR, Expected Shortfall / CVaR); Extreme Value Theory (Peaks-Over-Threshold / GPD) and Kupiec/Christoffersen backtesting; heavy-tail estimation (Hill estimator with budget-derived $z/\sqrt{k}$ error bound); multiple testing adjustments (Bonferroni, Benjamini-Hochberg FDR, White's Reality Check); failure documentation registry.
+- **Exit Gate:** Anti-leakage guard triggers immediate failure on look-ahead injection; Kupiec/Christoffersen test statistics match numerical fixtures within $10^{-8}$; Hill estimator recovers synthetic Pareto index within $z/\sqrt{k}$; multiple testing adjustments control FWER/FDR on synthetic noise within exact binomial bounds ($K \le 21$ for $R=200$, $K \le 73$ for $R=1,000$ under suite-level $\alpha_{\text{check}} = 5 \times 10^{-4}$; legacy $K \le 20$ / $K \le 71$ under $\alpha = 10^{-3}$).
+
+---
+
+### Phase 5: Portfolio Optimization, Constraints & Transaction Costs [CORE]
+- **Prerequisites:** Phase 1, Phase 2, and Phase 4 verified pass.
+- **Scope:** Markowitz mean-variance optimization using convex programming (OSQP/SCS); box constraints, sector caps, and budget constraints; linear and quadratic transaction cost modeling; robust portfolio optimization under return uncertainty sets; Ledoit-Wolf covariance shrinkage.
+- **Exit Gate:** KKT residuals satisfy configured solver tolerances (`primal <= 1e-6`, `dual <= 1e-6`, `status == OPTIMAL`); 2-asset analytical formula with $\sigma_{12}$ and boundary handling matched within $10^{-7}$; transaction cost penalty reduces turnover monotonically.
+
+---
+
+### Phase 6: Bandits and Sequential Decision-Making [CORE & STRETCH]
+- **Prerequisites:** Phase 4 and Phase 5 verified pass.
+- **Scope:**
+  - **Multi-Armed Bandits [CORE]:** $\epsilon$-Greedy, UCB1, and Thompson Sampling evaluated against Auer et al. (2002) finite-time regret bounds.
+  - **Sequential Allocation & MDPs [STRETCH]:** Gymnasium-compliant financial trading MDP with transaction costs and drawdown penalties; Risk-sensitive bandits (CVaR-UCB); Deep Reinforcement Learning (PPO) continuous asset allocator on the probability simplex.
+- **Exit Gate:** MAB mean pseudo-regret bounded by theoretical finite-time bound over $M \ge 100$ runs; financial MDP deducts transaction costs correctly; PPO allocations strictly satisfy simplex constraints.
+
+---
+
+### Phase 7: Modern AI: Neural Networks, Attention, Transformers & Diffusion [STRETCH]
+- **Prerequisites:** Phase 3 and Phase 4 verified pass.
+- **Scope:** Temporal Convolutional Networks (TCN) with causal dilations; decoder-only causal Transformer blocks with triangular masking; 1D temporal Denoising Diffusion Probabilistic Models (DDPM) for synthetic scenario generation evaluated on analytical Gaussian targets and empirical stylized facts; distribution-shift stress testing.
+- **Exit Gate:** TCN and Transformer pass strict temporal causality gradient tests ($\partial y_t / \partial x_{t+k} \equiv 0$); diffusion model reproduces moments on 1D Gaussian target within budget-derived $z \times \text{SE}$; negative results on stylized facts or baseline comparisons logged in failure registry.
+
+---
+
+### Phase 8: Offline Dashboard & End-to-End Reproducibility [CORE]
+- **Prerequisites:** All preceding phases verified pass.
+- **Scope:** Standalone offline artifact reader deserializing JSON and Parquet experiment outputs; static HTML/Markdown research tear-sheets and metric comparison tables; single-command master replication script running end-to-end suite.
+- **Exit Gate:** Dashboard displays only genuine results from saved experiment manifests without mock data; single replication script executes cleanly and reproduces all tables and figures.
+
+---
+
+## 3. Milestone 1 Redefinition: Detailed Specification
+
+### 3.1 Sub-Component Breakdown
+
+#### (a) Scaffolding & Reproducibility Conventions
+- **Objective:** Establish the minimal package layout, configuration handling, deterministic RNG utility, and test harness.
+- **Mathematical Assumptions:** None.
+- **Interface Names & Responsibilities:**
+  - `quantforge.core.config`: Minimal configuration loader (standard library `json` or minimal parser). Parses and validates typed configuration dictionaries.
+  - `quantforge.core.rng`: Centralized RNG utility. Accepts a base seed or `SeedSequence`, exposes `get_generator()` returning `np.random.Generator(np.random.PCG64)`, and `spawn_generators(n)` for parallel/batch tasks.
+  - `quantforge.core.experiment`: Base interface defining `setup()`, `run()`, `validate()`, and `export_record()`.
+- **FAST Unit Tests:**
+  - `test_config_loading`: Verifies valid config parsing, rejection of malformed configs.
+  - `test_rng_determinism`: Verifies identical stream generation for identical seed; independence of spawned streams.
+- **SLOW Validation Experiments:** None.
+- **Tolerances & Derivation:** Exact string and integer match.
+- **Evidence Artifact:** `manifest_schema.json`, test execution log.
+- **Reproducibility:** Seed and `SeedSequence.entropy` logged with Python and NumPy versions.
+- **Definition of Done:** Importable package, clean test discovery, no global RNG state.
+
+#### (b) Monte Carlo Estimator on $E[S_T]$
+- **Objective:** Implement the basic sample-mean Monte Carlo estimator with CLT confidence intervals for terminal stock price expectation $E[S_T] = S_0 e^{\mu T}$ (no options).
+- **Mathematical Assumptions:** I.i.d. draws from known log-normal distribution; finite variance.
+- **Interface Names & Responsibilities:**
+  - `quantforge.math.monte_carlo`: Functions `estimate_mean(samples, confidence_level)` returning point estimate, sample variance, standard error, and CI bounds.
+- **FAST Unit Tests:**
+  - `test_mc_ci_algebra`: Verifies CI half-width equals $z_{1-\alpha/2} S_N / \sqrt{N}$ within $10 \times \epsilon_{\text{mach}}$.
+- **SLOW Validation Experiments:**
+  - `exp_mc_coverage`: Simulates $R$ independent Monte Carlo runs of size $N=10,000$ for $S_0=100, \mu=0.05, \sigma=0.2, T=1.0$. Asserts empirical coverage of 99% CI falls within exact binomial lower bound.
+- **Tolerances & Derivation:**
+  - Exact binomial lower bound for $R=200, p=0.99$: $k \ge 192$ (coverage $\ge 96.0\%$, $P(\text{false fail}) = 2.1254 \times 10^{-4} \le 5 \times 10^{-4} < 10^{-3}$).
+  - Proposed pending approval: $R=1,000, p=0.99$: under suite budget $\alpha_{\text{check}} = 5 \times 10^{-4}$, $k \ge 978$ (coverage $\ge 97.8\%$, $P(\text{false fail}) = 2.7216 \times 10^{-4} \le 5 \times 10^{-4}$); under legacy $\alpha_{\text{fail}} = 10^{-3}$, $k \ge 979$ ($P = 6.5183 \times 10^{-4} \le 10^{-3}$).
+- **Evidence Artifact:** `mc_coverage_report.json`, histogram plot of standardized errors.
+- **Definition of Done:** Coverage validated against exact binomial threshold; test harness passes.
+
+#### (c) Brownian Motion Simulation & Quadratic Variation
+- **Objective:** Simulate standard Brownian motion paths $W_t$, verify Gaussian increment properties, and evaluate convergence of quadratic variation.
+- **Mathematical Assumptions:** $W_0 = 0$; independent Gaussian increments $W_{t+h} - W_t \sim \mathcal{N}(0, h)$.
+- **Interface Names & Responsibilities:**
+  - `quantforge.math.brownian`: Function `simulate_brownian_motion(T, N, num_paths, rng)` returning array of paths.
+- **FAST Unit Tests:**
+  - `test_bm_increments`: Tests that sample mean of increments is within $z \times \sqrt{h/P}$, sample variance is within $z \times h \sqrt{2/(P-1)}$, and lag-1 autocorrelation is within $z/\sqrt{P}$ ($z \approx 3.48$).
+- **SLOW Validation Experiments:**
+  - `exp_quadratic_variation`: Evaluates $\sum_{k=0}^{N-1} (\Delta W_k)^2$ across $N \in \{64, 128, 256, 512, 1024\}$. Verifies sample mean $\approx T$ and sample variance $\approx 2T^2/N$ within $z \times \text{SE}$ ($z \approx 3.48$).
+- **Tolerances & Derivation:** Derived from normal and chi-square distribution standard errors: $\text{SE}(\text{mean}) = \sqrt{h/P}$, $\text{SE}(\text{Var}) = h\sqrt{2/(P-1)}$.
+- **Evidence Artifact:** `quadratic_variation_convergence.png`, summary table JSON.
+- **Definition of Done:** Increments pass all budget-derived $z \times \text{SE}$ checks; quadratic variation variance scales as $2T^2/N$.
+
+#### (d) Geometric Brownian Motion with Exact Moments
+- **Objective:** Implement exact analytical path simulation for GBM and verify exact first and second moments.
+- **Mathematical Assumptions:** $S_t = S_0 \exp((\mu - 0.5\sigma^2)t + \sigma W_t)$.
+- **Interface Names & Responsibilities:**
+  - `quantforge.math.gbm`: Function `simulate_gbm_exact(S0, mu, sigma, T, N, num_paths, rng)`.
+- **FAST Unit Tests:**
+  - `test_gbm_exact_formula`: Verifies path values match analytical formula from underlying $W_t$ within relative tolerance $10^{-12}$.
+  - `test_gbm_moments`: For $P=10,000$ paths, verifies sample mean matches $S_0 e^{\mu T}$ within $z \times \text{SE}$ and sample second moment matches $S_0^2 e^{(2\mu+\sigma^2)T}$ within $z \times \text{SE}$ ($z \approx 3.48$).
+- **SLOW Validation Experiments:** None.
+- **Tolerances & Derivation:** Analytical moment formulas; standard error of sample moments $\text{SE} = \sqrt{\text{Var}(S_T)/P}$.
+- **Evidence Artifact:** `gbm_moment_verification.json`.
+- **Definition of Done:** Sample moments pass $z \times \text{SE}$ bounds; path values match analytical formula within $10^{-12}$.
+
+#### (e) Euler-Maruyama & Milstein SDE Solvers with Itô Invariant
+- **Objective:** Implement vectorized numerical SDE solvers for 1D autonomous equations; verify strong error convergence rate on GBM against exact closed-form strong error; verify deterministic weak error via exact second-moment recursions; verify numerical solver sample second moment (`M1-SDE-05`); verify deterministic single-step SDE correctness check (`M1-SDE-06`); verify Itô pathwise algebraic identity.
+- **Mathematical Assumptions:** Drift and diffusion satisfy Lipschitz and linear growth; diffusion $b \in C^1$; 1D noise (commutativity trivial).
+- **Interface Names & Responsibilities:**
+  - `quantforge.math.sde`: Functions `euler_maruyama(x0, a_fn, b_fn, T, N, dW)` and `milstein_1d(x0, a_fn, b_fn, b_prime_fn, T, N, dW)`.
+  - `quantforge.math.ito`: Function `verify_ito_identity(W, dW, T)`.
+- **FAST Unit Tests:**
+  - `test_ito_pathwise_identity`: Verifies that for every path, $I_{\text{discrete}} - 0.5(W_T^2 - T) \equiv 0.5(T - \sum (\Delta W)^2)$ within relative tolerance $10 \times \epsilon_{\text{mach}} \times N$.
+  - `test_deterministic_weak_reference`: Formula-level analytical reference check (does NOT exercise solver code). Evaluates $|\mathbb{E}[X_N^2] - \mathbb{E}[X_T^2]|$ using exact moment recursions (Euler factor $1 + (2\mu+\sigma^2)h + \mu^2 h^2$; Milstein factor $c^2 + \sigma^2 h + c\sigma^2 h + 0.75\sigma^4 h^2$ where $c = 1 + \mu h - 0.5\sigma^2 h$). Verifies error scales as $\mathcal{O}(h)$ with slope in $[0.90, 1.10]$.
+  - `test_deterministic_step_invariant` (`M1-SDE-06`): Direct code-level solver test with deterministic increment $\Delta W = 2\sqrt{h}$. For $x_0 = 100, \mu = 0.05, \sigma = 0.2, h = 0.01$, verifies Euler produces $X_1 = 104.0500000000$, Milstein produces $X_1 = 104.1100000000$, and the difference $X_1^{\text{Milstein}} - X_1^{\text{Euler}} \equiv +0.0600000000$ within relative tolerance $10^{-12}$.
+  - `test_negative_control`: Asserts that test harness rejects deliberately false claimed convergence orders.
+- **SLOW Validation Experiments:**
+  - `exp_sde_strong_convergence`: Evaluates strong error across step count grid $N \in \{16, 32, 64, 128, 256\}$ ($h = T/N$) with $B=10$ batches of $P=1,000$ paths driven by identical fine increments ($N_{\text{fine}}=256$). Verifies fitted Monte Carlo slope agrees with slope computed from exact closed-form strong error over the identical grid within $t_{\text{crit}} \times \text{SE}$ ($t_{0.99975, df=9} \approx 5.29$, $\text{SE} \le 0.05$). Reports pre-asymptotic distance to asymptotic order ($0.5$ Euler, $1.0$ Milstein) as a diagnostic.
+  - `exp_sde_weak_solver_moment` (`M1-SDE-05`): Exercises actual solver implementation. Asserts sample mean $\overline{X_N^2}$ matches exact discrete moment $x_0^2 [f(h)]^N$ within $z \times S(X_N^2)/\sqrt{P}$ ($z \approx 3.48$).
+  - `exp_ito_rms_convergence`: Verifies RMS discrepancy $\left\| I_{\text{discrete}} - 0.5(W_T^2 - T) \right\|_{L^2}$ scales as $\sqrt{T \Delta t / 2}$ with fitted slope containing 0.5 inside budget-derived interval $[\hat{\text{slope}} \pm t_{\text{crit}} \times \text{SE}]$ ($t_{0.99975, df=9} \approx 5.29$ for $B=10$ batches, or $z \approx 3.48$ for pooled paths).
+- **Tolerances & Derivation:** Explicit derivations in `MATHEMATICAL_VALIDATION_PLAN.md` Sections 3.2 and 3.3.
+- **Evidence Artifact:** `sde_strong_convergence.png`, `ito_rms_convergence.png`, `sde_benchmark_metrics.json`.
+- **Definition of Done:** Itô identity holds pathwise; strong error slope agrees with exact strong error within $t_{\text{crit}} \times \text{SE}$; deterministic single-step invariant matches within $10^{-12}$; M1-SDE-05 solver moment matches discrete factor; negative control passes; deterministic weak error confirmed.
+
+---
+
+## 4. Proposed Tooling Stack for Milestone 1 (Proposals Pending Approval)
+
+| Tool / Library | Proposed Role | Status | Justification / Notes |
+|:---|:---|:---:|:---|
+| **Python** | Core Programming Language | Decision Awaiting Approval | Python 3.13.2 verified on host OS. Decision required: use host Python 3.13.2 or install an older interpreter (e.g. Python 3.11). |
+| **NumPy** | Vectorized math, arrays, PCG64 Generator | Decision Awaiting Approval | Version to be determined at install time, must support host Python, and pinned exactly in each experiment record. |
+| **SciPy** | Special functions (Optional) | Decision Awaiting Approval | Optional with stated justification: Python standard library (`statistics.NormalDist` for normal quantiles, `math.comb` for binomials) covers Milestone 1 math. |
+| **pytest** | Test runner, FAST/SLOW markers | Decision Awaiting Approval | Standard test framework; version to support host Python and pinned at install time. |
+| **matplotlib (optional)** | Convergence figure export | Decision Awaiting Approval | Headless PNG plot export for evidence artifacts. |
+| **Pydantic** | Configuration validation | **EXCLUDED FROM M1** | Unnecessary dependency for Milestone 1; standard library dict/json proposed. |
+| **PyTorch** | Tensor compute, autograd | **EXCLUDED FROM M1** | Unnecessary for Milestone 1; deferred to deep learning phase. |
+| **CVXPY** | Convex optimization | **EXCLUDED FROM M1** | Unnecessary for Milestone 1; deferred to Phase 5. |

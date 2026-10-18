@@ -1,0 +1,94 @@
+# DATA PROVENANCE, INTEGRITY & LICENSE STRATEGY
+
+**QUANTFORGE X — Open-Source Financial Data Architecture & Governance Policy**
+
+---
+
+## 1. Core Principles of Data Governance
+
+Scientific integrity in quantitative finance depends strictly on data realism, provenance transparency, and uncompromising leakage prevention. QUANTFORGE X adheres to four governance rules:
+
+1. **Zero Hallucination / Zero Fabrication:** No mock, synthetic, or interpolated data may ever be represented as historical market data.
+2. **Realistic Free-Data Assumptions:** Free, publicly accessible data is assumed to be limited to daily OHLCV, macro indicators, and public agency samples. We do **not** assume access to institutional tick-level order books, live millisecond quotes, proprietary broker feeds, or survivorship-bias-free historical index constituents.
+3. **Point-in-Time Causality:** Features engineered at time $t$ must only utilize information known strictly at or before time $t$. Look-ahead leakage triggers automated test failures.
+4. **License Compliance:** Every data source is audited for academic/research usage rights, redistributability, and terms of service compliance.
+
+---
+
+## 2. Data Source Inventory & Provenance Matrix
+
+| Source Identifier | Source Provider & API | Sampling Frequency | Historical Coverage | Ingested Fields | Licensing & Usage Terms | Known Limitations & Biases | QUANTFORGE X Role |
+|:---|:---|:---:|:---:|:---|:---|:---|:---|
+| **DS-EQUITY-DAILY** | Yahoo Finance (via `yfinance` / Stooq) | Daily (EOD) | 2000–Present (20+ years) | Open, High, Low, Close, Adjusted Close, Volume | Non-commercial educational & research use. Yahoo ToS compliance. | Survivorship bias (only surviving tickers tracked); unadjusted vs adjusted split timing; no intraday depth. | Equity quantitative research, factor testing, historical VaR/CVaR backtesting. |
+| **DS-MACRO-RATES** | Federal Reserve Economic Data (FRED API) | Daily / Monthly | 1960–Present | US 3-Month T-Bill (DTB3), 10-Year Treasury Yield (DGS10), CPI, VIXCLS | Public domain (U.S. Government work / St. Louis Fed open data). | Reporting lags on macroeconomic releases (CPI reported monthly with 2-3 week delay). | Risk-free rate baseline ($r$), discount curve, yield curve modeling, macro regime indicator. |
+| **DS-AGENCY-MORTGAGE** | Fannie Mae / Freddie Mac Single-Family Loan-Level Datasets (Public Sample) | Monthly Loan Level | Static historical sample pools | Loan ID, Origination Date, UPB, Note Rate, Delinquency Status, Prepayment, Zero Balance Code | Free public registration for educational and academic research. Non-redistributable raw files. | Static historical cohort; does not represent live primary market; prepayment dynamics specific to US conforming loans. | Educational Securitized Products module (A.10): Collateral loan pool calibration and waterfall testing. |
+| **DS-SYNTH-SDE** | Internal Mathematical Path Generator (`quantforge.data.synthetic_gen`) | Micro-step / Daily ($\Delta t$) | Arbitrary length $T$ | Simulated asset paths $S_t$, stochastic variance $V_t$, jump events $J_t$ | Fully open-source / proprietary to QUANTFORGE X. | Synthetic paths reflect mathematical models (GBM, Heston, OU, Merton) rather than true human market microstructure. | Mathematical verification of Itô calculus, analytical BS convergence, SDE solver testing, variance reduction. |
+| **DS-DIFFUSION-SYNTH** | Generative Scenario Engine (`quantforge.deeplearn.diffusion`) | Daily synthetic paths | Unconditional or regime-conditioned samples | Simulated multi-day log-return vectors | Model output generated locally. | Subject to mode collapse, distributional drift, and sample artifact risks if not carefully audited. | Stress-testing scenario generation, tail-risk simulations, out-of-distribution regime auditing. |
+
+---
+
+## 3. Explicit Data Scope Boundaries
+
+To prevent unrealistic claims and project failure, QUANTFORGE X explicitly enforces the following boundaries:
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    DATA SCOPE BOUNDARY MATRIX                                      |
++----------------------------------------------------------------------------------------------------+
+| IN-SCOPE (Validated & Open)                        | OUT-OF-SCOPE (Explicitly Excluded)             |
+|----------------------------------------------------+------------------------------------------------|
+| * Daily OHLCV adjusted prices                      | * Intraday Level-2 / Level-3 Limit Order Books |
+| * Historical dividend & split adjustments          | * Millisecond exchange timestamps (SIP, direct)|
+| * Daily Treasury yield curves (FRED)               | * Proprietary Bloomberg/Refinitiv raw tick feeds|
+| * Public agency mortgage sample performance pools  | * Survivorship-free historical delisted universe|
+| * Synthetic SDE paths with known ground truth      | * Proprietary AlphaGrep trading data or alpha  |
+| * Mathematical Monte Carlo path ensembles          | * Real money brokerage execution APIs          |
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 4. Point-in-Time Correctness & Anti-Leakage Protocol
+
+Financial feature engineering is exceptionally susceptible to subtle information leakage. QUANTFORGE X implements an architectural firewall:
+
+```
+                      Raw Price Time Series (t = 0, 1, ..., T)
+                                      |
+                                      v
+                 [Temporal Barrier / Chronological Partition]
+                                      |
+              +-----------------------+-----------------------+
+              |                                               |
+              v                                               v
+    Training Window: [0, t_train]                  Test Window: [t_test, T]
+    (Purged: [t_train - embargo, t_train])         (t_test > t_train strictly)
+              |                                               |
+              v                                               v
+    Fit Scaling & Imputation Parameters            Apply Pre-fitted Scalers
+    (Mean, Std, PCA, Kernels)                      (Zero recalculation on Test)
+              |                                               |
+              +-----------------------+-----------------------+
+                                      |
+                                      v
+                         [Leakage Guard Assertion]
+           assert max(train_timestamps) < min(test_timestamps)
+```
+
+### Specific Guardrail Mechanisms:
+1. **Target Shifting Invariant:** For return prediction at horizon $h$, the feature vector $X_t$ is constructed strictly from observations $\{p_\tau\}_{\tau \le t}$, while target $y_t$ is defined as $r_{t \to t+h} = \ln(p_{t+h}/p_t)$. In the feature matrix, target $y_t$ is strictly masked from the input tensor.
+2. **Scaler Pre-Fitting:** Normalization parameters (z-score $\mu, \sigma$, min-max bounds, quantile transformers) are calculated exclusively on training partitions. Applying `fit_transform` across the entire time series is prohibited.
+3. **Embargo & Purging:** Following de Prado's methodology, when overlapping return targets (e.g. 5-day cumulative returns) are predicted, a purge window equal to the return horizon is inserted between the training set and the test set to eliminate serial correlation leakage.
+
+---
+
+## 5. Storage Format & Artifact Hashing
+
+All historical and generated datasets are stored in an immutable, high-performance local columnar structure:
+- **Format:** Apache Parquet with Snappy compression.
+- **Indexing:** Chronologically sorted UTC `DateTimeIndex` as the primary key.
+- **Metadata Manifest:** Every Parquet file is accompanied by a companion JSON sidecar containing:
+  - Source URI and retrieval timestamp.
+  - SHA-256 data hash.
+  - Column schema, null counts, and data types.
+  - Licensing category tag.

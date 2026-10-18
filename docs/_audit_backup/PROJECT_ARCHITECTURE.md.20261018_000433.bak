@@ -1,0 +1,132 @@
+# PROJECT ARCHITECTURE & SYSTEM DESIGN
+
+**QUANTFORGE X — Technical Architecture, Layered System Design & Engineering Standards**
+
+---
+
+## 1. Architectural Philosophy & Principles
+
+QUANTFORGE X is engineered not as a loose collection of disparate Jupyter notebooks, but as an integrated, production-grade quantitative research laboratory. The architecture is governed by five non-negotiable principles:
+
+1. **Mathematical Transparency & Modular Separation:** Foundational mathematical engines (SDE solvers, Itô calculus, distributions) are completely decoupled from downstream consumer modules (pricing engines, portfolio optimizers, RL agents).
+2. **Strict Provenance & Anti-Leakage Separation:** Synthetic simulation environments (where true underlying parameters are known by construction) are strictly segregated from empirical market data experiments. The data layer enforces point-in-time timestamp causality at the tensor level.
+3. **Reproducibility by Design (No Global State):** Every experiment execution is completely deterministic and reproducible via explicit pseudorandom number generator (PRNG) state management using NumPy's `Generator` with `PCG64` initialized from a `SeedSequence`. Parallel and batched workers spawn independent streams via `SeedSequence.spawn()`. Reliance on global state (`np.random.seed`) is strictly prohibited.
+4. **Parsimony & Baseline-First Hierarchy:** No advanced deep learning or sequential decision model is trained without an automated, contemporaneous evaluation against an appropriate classical baseline (e.g., OLS/Ridge vs Transformers; UCB1 vs Risk-Sensitive Bandits; Markowitz vs DRL).
+5. **Windows-Native Robustness & Dependency Parsimony:** Fully native to Windows 10/11 environments using Python 3.11/3.13. Heavy third-party frameworks (such as PyTorch, Pydantic, CVXPY) are treated as **proposals requiring explicit approval**, not assumed dependencies. Milestone 1 is implemented strictly with standard-library configuration and minimal mathematical tools (NumPy, SciPy).
+
+---
+
+## 2. Layered Architecture Diagram (Aligned with Phased Roadmap)
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    LAYER 8: DASHBOARD & CLI [CORE]                                 |
+|             Offline Artifact Reader  *  Interactive HTML Reports  *  CLI Experiment Runner         |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                        LAYER 7: MODERN AI: TRANSFORMERS & DIFFUSION [STRETCH]                      |
+|       Causal Dilated TCNs  *  Decoder-Only Transformers  *  1D Temporal Diffusion DDPM             |
+|       Toy Moment Verification  *  Stylized Fact Validator  *  Regime Shift Auditing                |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                      LAYER 6: BANDITS & SEQUENTIAL DECISIONS [CORE & STRETCH]                      |
+|       * Multi-Armed Bandits (UCB1, Thompson Sampling vs Auer 2002 Bound) [CORE]                    |
+|       * Financial Trading MDP  *  CVaR-UCB Risk Bandits  *  PPO Portfolio Agent [STRETCH]          |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                     LAYER 5: CONVEX & ROBUST PORTFOLIO OPTIMIZATION [CORE]                         |
+|       Markowitz Solvers (OSQP/SCS Status & Residuals)  *  Transaction Costs & Turnover Penalty     |
+|       Ledoit-Wolf Covariance Shrinkage  *  Robust Uncertainty Sets  *  2-Asset Boundary Formula    |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                   LAYER 4: RESEARCH PROTOCOL, RISK & VALIDATION FRAMEWORK [CORE]                   |
+|       Purged/Embargoed Walk-Forward Splits  *  Trial Registry  *  Multiple Testing Options         |
+|       Coherent Risk (VaR & CVaR)  *  Extreme Value Theory (POT/GPD)  *  Hill Tail Estimator        |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                      LAYER 3: STATISTICAL LEARNING & KERNEL METHODS [CORE]                         |
+|       Regularized Linear Models (Ridge, Lasso)  *  Support Vector Machines (SVR/SVC)               |
+|       Reproducing Kernel Hilbert Spaces (RKHS)  *  Gaussian Processes (Prior Synthetic Test)      |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                      LAYER 2: FINANCIAL ENGINEERING & DERIVATIVES PRICING [CORE]                   |
+|       Black-Scholes Analytical Pricing & Greeks  *  Monte Carlo Derivative Engines                 |
+|       Variance Reduction (Antithetic & Control)  *  Securitized Waterfall Engine [STRETCH]         |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                LAYER 1: REPRODUCIBLE STOCHASTIC FOUNDATIONS (MILESTONE 1) [CORE]                   |
+|       Brownian Motion Path Generators  *  Quadratic Variation L^2 Convergence                      |
+|       Geometric Brownian Motion & Moments  *  Euler-Maruyama & Milstein SDE Solvers                |
+|       Deterministic Weak Moment Recursions  *  Itô Left-Endpoint Pathwise Invariant                |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                              LAYER 0: CORE SYSTEM INFRASTRUCTURE                                   |
+|       Config Manager (Minimal Stdlib / Dict)  *  Artifact Manifests  *  SeedSequence PCG64 RNG    |
+|       FAST / SLOW Pytest Markers              *  Base Interfaces     *  Float64 rtol+atol Policy   |
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 3. Dependency Governance & Framework Proposals
+
+To avoid dependency bloat and installation fragility on Windows, all non-standard-library packages are strictly governed:
+
+| Framework / Tool | Proposed Layer | Status | Architectural Justification & Fallback Policy |
+|:---|:---:|:---:|:---|
+| **Python 3.11 / 3.13** | Core | Approved Baseline | Python 3.13.2 verified on host system. Standard library provides `json`, `math`, `pathlib`, `hashlib`. |
+| **NumPy (>= 1.25)** | Layer 0–8 | Proposal Pending Approval | Core vectorized array engine and `SeedSequence`/`PCG64` generator. Essential for all mathematical simulations. |
+| **SciPy (>= 1.11)** | Layer 1–5 | Proposal Pending Approval | Required for special functions (`erf`, normal CDF) and distribution fitting. No solver used in M1. |
+| **pytest (>= 7.4)** | Testing | Proposal Pending Approval | Test runner with custom markers (`@pytest.mark.fast`, `@pytest.mark.slow`). |
+| **Pydantic** | Layer 0 | **PROPOSAL ONLY (EXCLUDED FROM M1)** | Typed configuration validation. Milestone 1 will use standard library `json` parsing to avoid unapproved dependencies. |
+| **CVXPY & OSQP** | Layer 5 | **PROPOSAL ONLY (EXCLUDED FROM M1)** | Convex quadratic programming. Deferred strictly to Phase 5. |
+| **PyTorch** | Layer 6–7 | **PROPOSAL ONLY (EXCLUDED FROM M1)** | Autograd and deep learning. Deferred strictly to Phase 6/7. No CUDA or PyTorch code in Milestone 1. |
+| **Cloud / Paid Services** | All | **STRICTLY EXCLUDED** | Entire laboratory executes 100% locally and offline without paid APIs, cloud services, or external database servers. |
+
+---
+
+## 4. Formal Interface Contracts (Milestone 1 Core)
+
+To ensure loose coupling, all Milestone 1 components adhere to simple, pure Python/NumPy abstract interfaces:
+
+```python
+# Conceptual Interface Contracts (No External Framework Dependencies)
+
+from abc import ABC, abstractmethod
+import numpy as np
+
+class BaseRNGService(ABC):
+    """Abstract manager for deterministic pseudo-random number streams."""
+    @abstractmethod
+    def get_generator(self) -> np.random.Generator: ...
+    
+    @abstractmethod
+    def spawn_generators(self, n: int) -> list[np.random.Generator]: ...
+
+class BaseSDESolver(ABC):
+    """Abstract interface for 1D numerical SDE solvers."""
+    @abstractmethod
+    def step(self, x: np.ndarray, t: float, dt: float, dW: np.ndarray) -> np.ndarray: ...
+    
+    @abstractmethod
+    def solve(self, x0: float, T: float, N: int, dW: np.ndarray) -> np.ndarray: ...
+```
+
+---
+
+## 5. Random Number Generation & Numerical Equality Policy
+
+1. **SeedSequence Policy:** Central entrypoint accepts an integer seed or entropy string, constructing a master `np.random.SeedSequence`. All generators are spawned from this master sequence.
+2. **Numerical Assertions:** Float64 array equality must use combined relative and absolute tolerances:
+   ```python
+   np.allclose(actual, expected, rtol=1e-9, atol=1e-12)
+   ```
+3. **Cross-Platform Reproducibility:** Bitwise identity (`np.array_equal`) is an expectation **only** on the same machine, same OS, and identical NumPy binary wheel. Cross-platform reproducibility across Intel, AMD, or ARM architectures is evaluated within numerical tolerance `rtol=1e-9`.

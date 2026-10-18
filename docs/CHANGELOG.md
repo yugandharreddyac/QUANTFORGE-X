@@ -1,0 +1,148 @@
+# CHANGELOG
+
+**QUANTFORGE X — Project Change & Audit Log**
+
+---
+
+## [Unreleased / Phase 0.2 Audit & Milestone 1 Redefinition] — 2026-10-17
+
+### Added
+- `docs/_audit_backup/`: Created timestamped backup directory containing pre-Phase-0.2 copies of all 10 markdown files (`.20261017_234500.bak`).
+- `docs/AUDIT_FINDINGS.md`: Created detailed findings log documenting 17 specific mathematical, statistical, architectural, and governance defects.
+- `docs/CHANGELOG.md`: Created project-wide append-only change log.
+- `PROJECT_STATE.md`: Created central repository state tracker recording verified facts, requirement statuses, open issues, and decisions awaiting approval.
+
+### Changed
+- `docs/MATHEMATICAL_VALIDATION_PLAN.md`:
+  - Section 3.2: Replaced ambiguous single-path Itô convergence with exact algebraic invariant $I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T) \equiv \frac{1}{2}(T - \sum (\Delta W_k)^2)$ to floating-point relative tolerance, and theoretical RMS error $\sqrt{T \Delta t / 2}$ with fitted slope 3-SE test. [Finding ID: FND-01]
+  - Section 3.3: Added explicit regularity conditions ($b \in C^1$ and 1D commutativity) for Milstein; replaced plain Monte Carlo weak error with exact deterministic second-moment recursions for GBM (Euler and Milstein factors). [Finding ID: FND-02]
+  - Section 3.1: Replaced guessed Monte Carlo coverage band $[96\%, 100\%]$ with derived exact binomial lower bound for false-failure budget $10^{-3}$; noted CLT under-coverage on skewed estimators at small $N$. [Finding ID: FND-03]
+  - Section 3.4: Reclassified variance reduction as `STAT_VALIDATION` with uncertainty reporting; removed unjustified hardcoded pass/fail thresholds. [Finding ID: FND-04]
+  - Section 3.6: Corrected 2-asset minimum variance formula to include covariance term $\sigma_{12}$: $w_1^* = (\sigma_2^2 - \sigma_{12})/(\sigma_1^2 + \sigma_2^2 - 2\sigma_{12})$; documented unconstrained boundary conditions and solver residual checks. [Finding ID: FND-06]
+  - Section 3.5: Derived Hill estimator tolerance from asymptotic relative standard deviation $1/\sqrt{k}$; reallocated Hill estimator to Phase 4. [Finding ID: FND-07]
+  - Section 3.5 & 3.4: Added GP prior synthetic validation; replaced ECE with PIT histograms and coverage-vs-nominal curves; added diffusion toy checks on Gaussian targets. [Finding IDs: FND-09, FND-10]
+- `docs/ACCEPTANCE_CRITERIA.md`:
+  - Section 1 & 2: Overhauled master criteria table to align with exact mathematical derivations and the 6-part taxonomy. Reclassified bandit regret and variance reduction to `STAT_VALIDATION`. [Finding IDs: FND-01 to FND-11]
+  - Section 2: Replaced flawed Bonferroni noise discovery test with exact binomial upper quantile for $R$ simulations and false-failure budget $10^{-3}$. [Finding ID: FND-05]
+  - Section 2: Established deterministic RNG policy (NumPy `Generator` with `PCG64` initialized from `SeedSequence`; parallel workers use `SeedSequence.spawn`); replaced atol-only tests with `rtol=1e-9` + `atol=1e-12`. [Finding ID: FND-11]
+  - Section 3: Redefined Milestone 1 sign-off checklist to match the minimal defensible scope (scaffolding, MC on $E[S_T]$, Brownian motion, GBM exact moments, Euler/Milstein strong/weak tests, Itô identity). [Finding ID: FND-16]
+  - Retracted all overclaims stating Phase 0 is "complete" or "100%". [Finding ID: FND-17]
+- `docs/IMPLEMENTATION_ROADMAP.md`:
+  - Section 1: Reordered roadmap to the exact required dependency sequence: Phase 0 Planning; Phase 1 Stochastic Foundations [CORE]; Phase 2 Financial Engineering [CORE]; Phase 3 Statistical & Kernel Learning [CORE]; Phase 4 Quantitative Research Protocol & EVT [CORE]; Phase 5 Portfolio Optimization [CORE]; Phase 6 Bandits [CORE] & RL [STRETCH]; Phase 7 Modern AI [STRETCH]; Phase 8 Offline Dashboard [CORE]. [Finding ID: FND-15]
+  - Section 2: Redefined Milestone 1 to focus strictly on core stochastic foundations without premature dependencies (no Pydantic, no PyTorch, no distributions MLE, no Hill estimator). [Finding ID: FND-16]
+  - Retracted all claims of Phase 0 being "complete" or "audited". [Finding ID: FND-17]
+- `docs/SOURCE_TRACEABILITY.md`:
+  - Section 1 & 2: Reclassified all external curriculum items without verified URL, retrieval date, and quoted text as `UNVERIFIED` ("source not inspected"). [Finding ID: FND-12]
+  - Marked recalled academic citations (McNeil & Frey 2000, DeMiguel et al. 2009, Auer et al. 2002) as "recalled, not inspected". Removed unverified "directly supports" claims. [Finding ID: FND-12]
+- `docs/DATA_AND_LICENSE_STRATEGY.md`:
+  - Section 2: Reclassified all external market data sources (Yahoo Finance, Stooq, FRED, Fannie Mae, Freddie Mac) as `TERMS UNVERIFIED` ("terms not yet inspected"). [Finding ID: FND-13]
+  - Section 1: Enforced strict policy: synthetic data for all mathematical tests; real data only after terms and provenance are verified; no committing raw third-party data without verified redistribution rights. [Finding ID: FND-13]
+- `docs/PROJECT_ARCHITECTURE.md`:
+  - Flagged heavy third-party packages (PyTorch, Pydantic, CVXPY) as proposals requiring approval rather than settled architectural decisions. Replaced global seeding with `SeedSequence` and `PCG64` generator architecture. [Finding IDs: FND-11, FND-14]
+- `README.md`:
+  - Sections 1, 3, 4, 5, 7: Retracted overclaims of "complete", "100%", or "audited". Updated current status banner to "Phase 0.2: Planning and audit pending independent review; no validated implementation exists". Clarified proposed target directory layout vs current documentation-only state. Added AUDIT_FINDINGS.md, CHANGELOG.md, and PROJECT_STATE.md to master deliverables index. Updated proposed development environment to match Python 3.13.2 verified host. [Finding ID: FND-17]
+
+---
+
+## [Phase 0.1 Audit & Criteria Correction] — 2026-10-17 (Reported by earlier report, unverified)
+- *Note:* The changes below were reported in the earlier Phase 0.1 report; they are recorded here as historical context but were found partially incomplete or unverified during Phase 0.2 audit:
+  - Reported introduction of 6-part criteria taxonomy.
+  - Reported correction of Itô discrepancy and SDE convergence slopes.
+  - Reported reclassification of empirical hypotheses.
+  - Reported separation of deterministic regression tests from multi-trial coverage.
+  - Reported addition of institutional non-endorsement disclaimers.
+
+---
+
+## [Phase 0.3: Correction of Derived Tolerances, Verification-Integrity Repair, and Content-Loss Audit] — 2026-10-18
+
+### CORRECTIONS to Phase 0.2 Log Entries
+- **CORRECTION (Monte Carlo Coverage Figures, REQ-B01, FND-18):**
+  Phase 0.2 reported hand approximations "$P(K \le 191) \approx 0.018$", "$P(K \le 190) \approx 0.0053$", "$P(K \le 188) \approx 0.00045$", and critical threshold "$k \ge 189$" for $R=200$, and "$P(K \le 979) \approx 0.0003$", "$k \ge 980$" for $R=1,000$.
+  *Correction:* Exact standard library Python `math.comb` computation revealed that for $R=200, p=0.99$:
+  $P(K \le 190) = 4.0142 \times 10^{-5}$, $P(K \le 191) = 2.1254 \times 10^{-4} \le 10^{-3}$, and $P(K \le 192) = 1.0126 \times 10^{-3}$.
+  Therefore, the original band $[96.0\%, 100.0\%]$ ($k \ge 192$) already satisfied the $10^{-3}$ false-failure budget ($P(\text{false fail}) = 2.1254 \times 10^{-4} \le 10^{-3}$); the Phase 0.2 replacement $k \ge 189$ and reported probabilities were wrong.
+  For $R=1,000, p=0.99$: $P(K \le 978) = 6.5183 \times 10^{-4} \le 10^{-3}$ and $P(K \le 979) = 1.4965 \times 10^{-3} > 10^{-3}$.
+  Therefore, the exact threshold for $\alpha_{\text{fail}} = 10^{-3}$ is $k \ge 979$ (coverage $\ge 97.9\%$), whereas Phase 0.2's $k \ge 980$ failed the budget ($P(\text{false fail}) \approx 1.50 \times 10^{-3} > 10^{-3}$).
+- **CORRECTION (Bonferroni Multiple Testing FWER, REQ-B02, FND-19):**
+  Phase 0.2 proposed a band of $[33, 67]$ for $R=1,000$ and $k \le 20$ for $R=200$.
+  *Correction:* For $m=100, \alpha=0.05$, true Bonferroni FWER is $q = 1 - (1 - 0.05/100)^{100} = 0.0487824698 \approx 0.0488$.
+  For $R=1,000$, $P(K \ge 72) = 8.2045 \times 10^{-4} \le 10^{-3}$, giving exact upper threshold $k \le 71$. Phase 0.2's $k \le 67$ was overly restrictive ($P(K > 67) \approx 4.34 \times 10^{-3} > 10^{-3}$). Imposing a lower bound (e.g. 33) is scientifically incorrect because a low FWER is superior error control, not a failure; the lower bound is retracted across all documents.
+- **CORRECTION (Monte Carlo Rate Slope Band, REQ-B04, FND-21):**
+  Phase 0.2 specified "log-log slope in $[-0.55, -0.45]$ with $\text{SE} \le 0.05$".
+  *Correction:* If $\text{SE} = 0.05$, the interval $[-0.55, -0.45]$ equals exactly 1 SE half-width, causing a correct implementation to falsely fail $\approx 31.7\%$ of the time. Replaced with budget-derived confidence interval $[-0.5 \pm z \times \text{SE}]$ with $z \approx 3.29$, plus informativeness condition $\text{SE} \le 0.05$ stated separately.
+
+### Added
+- `docs/_audit_backup/*.20261018_000433.bak`: Created new pre-edit backup of all 13 Markdown files in the repository.
+- `docs/MATHEMATICAL_VALIDATION_PLAN.md`:
+  - Section 1.1: Added explicit Aggregate False-Failure Budget specification ($\alpha_{\text{suite}} \le 10^{-2}$ per SLOW suite run, per-check budget $\alpha_{\text{check}} = 10^{-3}$, $z = \Phi^{-1}(1 - \alpha_{\text{check}}/2) \approx 3.2905 \approx 3.29$). [REQ-B03, FND-20]
+  - Section 3.3: Derived exact closed-form strong error for Geometric Brownian Motion: $\mathbb{E}[(X_T - X_N)^2] = \mathbb{E}[X_T^2] - 2\mathbb{E}[X_T X_N] + \mathbb{E}[X_N^2]$. Derived Euler cross factor $e^{\mu h}(1 + \mu h + \sigma^2 h)$ and Milstein cross factor $e^{\mu h}(1 + \mu h + \sigma^2 h + 0.5 \sigma^4 h^2)$, confirmed against Gaussian quadrature to $3.48 \times 10^{-14}$. [REQ-C02, FND-24]
+  - Section 3.3: Replaced step grid $h \in \{0.08, 0.04, 0.02, 0.01\}$ ($h=0.08$ does not divide $T=1$) with integer step counts $N \in \{16, 32, 64, 128, 256\}$ ($h = T/N$), coarse increments formed from fine grid $N=256$. Replaced asymptotic slope test with test against exact closed-form strong error slope over identical grid within $z \times \text{SE}$, removing pre-asymptotic bias. [REQ-C03, FND-24]
+  - Section 3.3: Relabeled deterministic weak moment recursion as "formula-level analytical reference check (does NOT exercise solver code)" classified `[MATH_INVARIANT]`. [REQ-C01, FND-23]
+  - Section 3.3: Added new requirement `M1-SDE-05` `[STAT_VALIDATION]`: simulation solver second moment sample mean $\overline{X_N^2}$ matches exact discrete moment $x_0^2 [f(h)]^N$ within $z \times S(X_N^2)/\sqrt{P}$. Status: `NOT STARTED`. [REQ-C01, FND-23]
+- `docs/PROJECT_ARCHITECTURE.md`:
+  - Restored Section 4 (Component Decomposition & Module Responsibilities). [REQ-D01, REQ-D02, FND-27]
+  - Restored Section 5 (Formal Conceptual Interfaces: Core, Math, Validation, Risk). [REQ-D01, REQ-D02, FND-27]
+  - Restored Section 6 (Data Flow Architecture ASCII diagram). [REQ-D01, REQ-D02, FND-27]
+  - Restored Section 7 (Windows-Specific Compute & Development Standards). [REQ-D01, REQ-D02, FND-27]
+- `docs/DOMAIN_COVERAGE_MATRIX.md`:
+  - Added Domain H: Integrated Research Interface & Dashboard (Phase 8 [CORE]) covering H.1–H.4. [REQ-E01]
+- `docs/AUDIT_FINDINGS.md`:
+  - Added findings FND-18 through FND-28 documenting all Phase 0.3 corrections and content restorations. [REQ-F02]
+
+### Changed
+- `docs/ACCEPTANCE_CRITERIA.md`:
+  - Table 2 & Section 3: Updated Monte Carlo coverage thresholds ($k \ge 192$ for $R=200$, $k \ge 979$ for $R=1,000$), rate slope interval, Itô RMS budget-derived $z$, exact closed-form strong error comparison on $N \in \{16, \dots, 256\}$, added `M1-SDE-05`, separated weak formula check from solver moment check, removed VRF hardcoded thresholds and mandated pilot recording with empirical batch SE, updated Hill estimator tolerance to $z/\sqrt{k}$, added independent fixture requirement for EVT Kupiec/Christoffersen tests, and updated multiple testing FWER threshold to $k \le 71$ with lower bound removed. [REQ-B01 to B06, REQ-C01 to C04]
+  - Section 4: Separated securitization waterfall (Sub-phase 2.3 `[STRETCH]`) into its own gate; removed from Phase 2 CORE exit gate. [REQ-E02, FND-25]
+- `docs/IMPLEMENTATION_ROADMAP.md`:
+  - Section 2: Separated securitization waterfall from Phase 2 CORE exit gate into a dedicated stretch gate. [REQ-E02, FND-25]
+  - Section 3.1: Updated component (b) Monte Carlo coverage, (c) Brownian motion increments and quadratic variation budget-derived $z$, (d) GBM moments budget-derived $z$, (e) Euler/Milstein strong/weak error specifications and added `M1-SDE-05`. [REQ-B01, REQ-C01 to C04]
+  - Section 4: Replaced hardcoded tooling versions with dynamic pinning at install time supporting host Python; flagged host Python 3.13.2 vs older interpreter and SciPy necessity as decisions awaiting approval. [REQ-E03, FND-26]
+- `docs/EXPERIMENTAL_DESIGN.md`:
+  - Section 2: Updated EXP-01 VRF hypothesis to remove hardcoded 2.5 and mandate pilot recording with empirical batch SE; updated EXP-04 toy diffusion validation to use budget-derived $z \times \text{SE}$. [REQ-B03, REQ-B05]
+- `docs/DOMAIN_COVERAGE_MATRIX.md`:
+  - Section 2: Updated G.3 Bonferroni FWER threshold to $k \le 71$ for $R=1,000$ and removed lower bound. [REQ-B02, FND-19]
+- `PROJECT_STATE.md`:
+  - Downgraded all requirement statuses (REQ-A01 to REQ-F05 of Phase 0.2 and Phase 0.3 IDs) to `IMPLEMENTED, NOT VERIFIED`, except where fresh command evidence from this task was collected. [REQ-A04]
+  - Added explicit disclaimer that statuses are self-reported and that Phase 0 sign-off requires independent review. [REQ-A05]
+  - Added new requirement `M1-SDE-05` with status `NOT STARTED`. [REQ-C01]
+  - Added 5 decisions awaiting user approval in Section 6 per REQ-E04. [REQ-E04]
+  - Updated current phase to "Phase 0.3 (corrections pending independent review)". [REQ-F03]
+- `README.md`:
+  - Updated status banner and roadmap references to Phase 0.3. [REQ-F03]
+
+---
+
+## [Phase 0.4: Scientific Correction and Documentation Repair] — 2026-10-18
+
+### Added
+- `docs/AUDIT_FINDINGS.md`:
+  - Added finding FND-29: Itô RMS convergence slope acceptance rule inconsistency repaired to use Student-$t$ multiplier ($df=9, t_{\text{crit}} \approx 5.29$) across $B=10$ batches.
+  - Added finding FND-30: Deterministic SDE single-step check (`M1-SDE-06`) fully documented with 6 explicit mathematical assumptions and added to `PROJECT_STATE.md` checklist.
+  - Added finding FND-31: Documented active files count updated to 14 (cataloging `docs/REPOSITORY_MODULARIZATION_PLAN.md`) and historical backups updated to 37 across three snapshots (`.20261017_234500.bak` [10], `.20261018_000433.bak` [13], and `.20261018_011351.bak` [14]).
+- `PROJECT_STATE.md`:
+  - Section 3: Added Phase 0.4 Requirements Table (`P04-REQ-01` through `P04-REQ-08`), recording executable proof for all mathematical derivations, binomial bounds, Student-$t$ multipliers, union bound assumptions, and SHA-256 backup preservation.
+
+### Changed
+- `docs/MATHEMATICAL_VALIDATION_PLAN.md`:
+  - Section 3.2: Repaired Itô RMS error convergence slope acceptance interval from normal multiplier $z \approx 3.29$ to Student-$t$ critical multiplier $t_{\text{crit}} = t_{0.99975, df=9} \approx 5.290654 \approx 5.29$ for $B=10$ batches ($df=9$) under 20-decision budget $\alpha_{\text{check}} = 5 \times 10^{-4}$ (or $t_{\text{crit}} \approx 4.780913 \approx 4.78$ under legacy $\alpha_{\text{check}} = 10^{-3}$). Added methodological explanation documenting that applying normal $z$ inflates false-rejection probability to $6.93 \times 10^{-3}$ ($14\times$ budget). [FND-20, FND-29]
+  - Section 3.3: Comprehensively documented all 6 explicit mathematical assumptions for `M1-SDE-06` Deterministic SDE Single-Step Reference Check: 1D autonomous Itô formulation; continuously differentiable spatial derivative $b'(X) = \sigma$; left-endpoint coefficient evaluation; intentional non-zero noise increment condition $(\Delta W)^2 - h = (0.2)^2 - 0.01 = 0.03 \ne 0$ separating Milstein ($104.1100000000$) from Euler ($104.0500000000$) by $\Delta = +0.060000000000$; 1D commutativity; machine precision relative tolerance $10^{-12}$. [FND-02, FND-30]
+  - Section 3.5: Aligned Hill estimator tolerance to explicitly display both the 20-decision suite budget ($z \approx 3.48, \text{tolerance} \le 11.0\%$) and legacy budget ($z \approx 3.29, \text{tolerance} \le 10.4\%$). [FND-07]
+- `docs/ACCEPTANCE_CRITERIA.md`:
+  - Section 4 Checklist: Aligned Hill estimator check (line 115) to $z \approx 3.48$ ($\le 11.0\%$) and legacy $z \approx 3.29$ ($\le 10.4\%$); aligned toy diffusion check (line 133) to $z \approx 3.48$ and legacy $z \approx 3.29$. [FND-07, FND-10]
+- `docs/DOMAIN_COVERAGE_MATRIX.md`:
+  - Section 2 (A.3): Specified Student-$t$ confidence interval with $df=9$ ($t_{\text{crit}} \approx 5.29$) across $B=10$ batches for Itô RMS error slope test. [FND-01, FND-29]
+  - Section 2 (G.3): Updated Bonferroni FWER acceptance rule to include the 20-decision suite budget ($k \le 21$ for $R=200$, $k \le 73$ for $R=1,000$) alongside legacy $10^{-3}$ thresholds ($k \le 20$ for $R=200$, $k \le 71$ for $R=1,000$). [FND-05, FND-19]
+- `docs/EXPERIMENTAL_DESIGN.md`:
+  - Section 2 (EXP-04): Aligned toy diffusion moment matching tolerance to $z \approx 3.48$ under 20-decision budget ($z \approx 3.29$ legacy). [FND-10]
+- `PROJECT_STATE.md`:
+  - Section 1: Updated current phase to Phase 0.4 (documentation repair only; pending independent review; no implementation code exists).
+  - Section 2: Updated repository contents to 14 active Markdown documents (including `docs/REPOSITORY_MODULARIZATION_PLAN.md`) and cataloged all 37 historical backups across three snapshots, documenting the earlier count discrepancy.
+  - Section 3: Updated Milestone 1 checklist table: added `M1-SDE-06` deterministic single-step check; updated batch slope tests (`M1-SDE-02`, `M1-ITO-02`) to Student-$t$ multiplier ($t_{\text{crit}} \approx 5.29$); updated normal tests (`M1-BM-01`, `M1-BM-02`, `M1-GBM-02`, `M1-SDE-05`) to $z \approx 3.48$ under 20-decision budget ($z \approx 3.29$ legacy); updated repeated coverage (`M1-MC-02`) to $k \ge 192$ for $R=200$ and $k \ge 978$ for $R=1,000$ under 20-decision budget ($k \ge 979$ legacy).
+  - Section 5: Added open issues 7 and 8 cataloging file/backup discrepancies (FND-31) and Student-$t$ batch multiplier requirements (FND-29).
+- `README.md`:
+  - Section 1 status banner: Updated to Phase 0.4.
+  - Section 3 directory layout & Section 4 deliverables table: Added `docs/REPOSITORY_MODULARIZATION_PLAN.md`.
+  - Section 7: Updated governance and phase status to Phase 0.4.
+- `docs/AUDIT_FINDINGS.md`:
+  - Section 2: Appended Phase 0.4 independent verification notes to findings FND-01 through FND-10; added findings FND-29 through FND-31.

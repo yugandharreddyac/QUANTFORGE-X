@@ -1,0 +1,225 @@
+# IMPLEMENTATION ROADMAP & PHASE DEPENDENCY PLAN
+
+**QUANTFORGE X — Sequential Phased Execution, Dependency Graph & Milestones**
+
+---
+
+## 1. Execution Principles & Phase Dependencies
+
+QUANTFORGE X is executed strictly in sequential phases. No downstream phase may commence until all acceptance criteria and mathematical tests of its prerequisite phases have passed.
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                      PHASE DEPENDENCY GRAPH                                        |
++----------------------------------------------------------------------------------------------------+
+
+  [Phase 0: Planning & Architectural Foundation] (COMPLETE / AUDITED)
+                        |
+                        v
+  [Phase 1: Smallest Defensible Milestone: Foundation, Distributions & SDE Solvers]
+          |                                  |
+          v                                  v
+  [Phase 2: Financial Engineering   [Phase 3: Statistical Learning
+   & Derivatives Pricing]            & Kernel Methods]
+          |                                  |
+          +-----------------+----------------+
+                            |
+                            v
+  [Phase 4: Modern AI, Transformers & Diffusion Models]
+                            |
+                            v
+  [Phase 5: Bandits & Sequential Decision Making (RL)]
+                            |
+                            v
+  [Phase 6: Robust Portfolio Optimization & Transaction Costs]
+                            |
+                            v
+  [Phase 7: Quantitative Research Protocol & EVT Tail Risk]
+                            |
+                            v
+  [Phase 8: Offline Research Dashboard & End-to-End Replication]
+```
+
+---
+
+## 2. Phase-by-Phase Roadmap & Milestones
+
+### Phase 0: Workspace Foundation, Infrastructure & Governance (COMPLETE)
+- **Status:** **PHASE 0.1 AUDIT COMPLETE** (Planning documents verified and mathematically corrected).
+- **Deliverables:**
+  - Complete master research specification and architecture documentation (`docs/` suite).
+  - Traceability matrix mapping AlphaGrep × IIITH public curriculum to project components.
+  - Criteria taxonomy separating software correctness (`MATH_INVARIANT`, `NUM_TOLERANCE`, `STAT_VALIDATION`) from empirical hypotheses (`EMP_HYPOTHESIS`).
+  - Verification of data provenance, license boundaries, and Windows OS compatibility.
+- **Milestone M0:** Formal sign-off and approval of Phase 0.1 audit by user.
+
+---
+
+### Phase 1: Smallest Defensible First Milestone — Core Infrastructure, Distributions & SDE Engines
+- **Prerequisites:** Milestone M0 approved.
+- **Design Philosophy:** Avoid premature complexity. Establish a rock-solid, fully testable mathematical core before building financial derivative models, portfolio optimizers, or neural networks.
+- **Scope & Modules:**
+  1. `quantforge.core`:
+     - Pydantic-based typed, immutable experiment configuration (`config.py`).
+     - Centralized deterministic seed manager locking Python, NumPy, and PyTorch PRNGs (`seeding.py`).
+     - Cryptographic run registry calculating SHA-256 hashes of configs and registering artifacts (`registry.py`).
+     - Core abstract base classes: `BaseDistribution`, `BaseSDESolver`, `BaseExperiment` (`base.py`).
+  2. `quantforge.math.distributions`:
+     - Vectorized continuous probability distributions (`Gaussian`, `StudentsT`, `LogNormal`, `Pareto`).
+     - Analytical moments (mean, variance, skewness, kurtosis), PDF/CDF, and SciPy-based MLE fitting.
+  3. `quantforge.math.sde`:
+     - Vectorized Standard Brownian Motion ($W_t$) and Geometric Brownian Motion (GBM) path generators.
+     - Vectorized Euler-Maruyama and Milstein numerical SDE solvers for 1D autonomous processes.
+  4. `quantforge.math.ito`:
+     - Discrete stochastic calculus engine computing $I_{\text{discrete}} = \sum W_{t_k} \Delta W_k$ and evaluating $L^2$ error convergence to $\frac{1}{2}(W_T^2 - T)$.
+  5. `quantforge.math.heavy_tails`:
+     - Hill estimator implementation for power-law tail index estimation.
+- **Verification Suite (`pytest`):**
+  - `test_distributions.py`: MLE parameter recovery on synthetic Gaussian, Student-t, and Pareto samples (`STAT_VALIDATION`).
+  - `test_sde_solvers.py`: SDE strong convergence slope on 1D GBM ($\approx 0.5$ for Euler, $\approx 1.0$ for Milstein) with $P=10,000$ paired paths (`NUM_TOLERANCE`).
+  - `test_ito.py`: Ensemble $L^2$ discrepancy $\sqrt{T \Delta t / 2}$ convergence verified across step sizes (`NUM_TOLERANCE`).
+  - `test_heavy_tails.py`: Hill estimator recovers known Pareto index within $\pm 10\%$ on synthetic variates (`STAT_VALIDATION`).
+  - `test_core_reproducibility.py`: Locked PRNG seed produces bitwise identical numeric arrays (`DOC_REPRO`).
+- **Performance Budget:** Entire Phase 1 test suite executes on local Windows CPU in $< 15$ seconds.
+- **Artifact Output:** Standalone script `experiments/phase1_benchmarks.py` generating JSON metrics and convergence figures (`sde_convergence.png`, `ito_error_convergence.png`).
+- **Milestone M1:** Mathematical & Stochastic Core fully verified and reproducible.
+
+---
+
+### Phase 2: Financial Engineering, Derivatives Pricing & Cash-Flow Engines
+- **Prerequisites:** Phase 1 (M1).
+- **Scope & Modules:**
+  - `quantforge.data.transforms`: Vectorized return representations (log, simple), dividend adjustments, and cash flows.
+  - `quantforge.pricing.black_scholes`: Analytical European option pricer, closed-form Greeks, put-call parity verifier.
+  - `quantforge.pricing.monte_carlo`: Path-dependent pricer with batch convergence and confidence interval validator.
+  - `quantforge.math.variance_reduction`: Antithetic variates and control variates engine.
+  - `quantforge.pricing.sensitivity`: Discrete delta-hedging error simulator under transaction costs.
+  - `quantforge.pricing.securitization`: Educational cash-flow waterfall engine (Senior/Mezzanine/Equity) with CPR prepayment and Poisson default hazard rates.
+- **Verification & Acceptance:**
+  - Put-call parity error $< 10^{-12}$ (`MATH_INVARIANT`).
+  - Monte Carlo pricing converges to Black-Scholes analytical within 99% CI coverage in $[96\%, 100\%]$ (`STAT_VALIDATION`).
+  - Securitized cash-flow conservation invariant strictly holds (`MATH_INVARIANT`).
+  - `pytest tests/test_pricing/` passing 100%.
+- **Milestone M2:** Derivatives pricing and cash-flow waterfall engines mathematically verified.
+
+---
+
+### Phase 3: Statistical Learning, Kernel Methods & Uncertainty Calibration
+- **Prerequisites:** Phase 1 (M1) and Phase 2 (M2).
+- **Scope & Modules:**
+  - `quantforge.statlearn.regression`: OLS, Ridge, Lasso, ElasticNet coordinate descent estimators.
+  - `quantforge.statlearn.svm`: Support Vector Regression & Classification with linear, poly, and RBF kernels.
+  - `quantforge.statlearn.kernels`: RKHS Gram matrix computations, Mercer positive semi-definiteness checks.
+  - `quantforge.statlearn.gaussian_process`: Exact Gaussian Process regression with Cholesky posterior solver.
+  - `quantforge.statlearn.calibration`: Expected Calibration Error (ECE) and reliability diagrams.
+- **Verification & Acceptance:**
+  - Gram matrix eigenvalues $\ge -10^{-10}$ (`MATH_INVARIANT`).
+  - GP posterior matches exact synthetic function within $10^{-4}$ (`NUM_TOLERANCE`).
+  - Linear and kernel baselines established for financial time-series prediction (`EMP_HYPOTHESIS`).
+  - `pytest tests/test_statlearn/` passing 100%.
+- **Milestone M3:** Statistical learning and Bayesian kernel engines validated with uncertainty quantification.
+
+---
+
+### Phase 4: Modern AI, Temporal Architectures & Diffusion Scenario Generation
+- **Prerequisites:** Phase 3 (M3).
+- **Scope & Modules:**
+  - `quantforge.deeplearn.networks`: MLP baselines and Temporal Convolutional Networks (TCN) with causal dilations.
+  - `quantforge.deeplearn.transformers`: Decoder-only causal Transformer blocks with triangular masking.
+  - `quantforge.deeplearn.diffusion`: 1D temporal Denoising Diffusion Probabilistic Model (DDPM) for synthetic returns.
+  - `quantforge.deeplearn.stylized_facts`: Quantitative validator for fat tails, volatility clustering, and ACF decay.
+  - `quantforge.deeplearn.regime_audit`: Distributional shift evaluator (MMD, Kolmogorov-Smirnov).
+- **Verification & Acceptance:**
+  - Strict temporal causality unit test passing: $\partial y_t / \partial x_{t+k} \equiv 0$ (`MATH_INVARIANT`).
+  - DDPM training loss decreases monotonically; output tensors are finite real numbers (`NUM_TOLERANCE`).
+  - Diffusion scenarios evaluated on empirical stylized facts; mode collapse or fidelity gaps documented (`EMP_HYPOTHESIS`).
+  - Deep learning benchmarked contemporaneously against Phase 3 baselines (`EMP_HYPOTHESIS`).
+  - `pytest tests/test_deeplearn/` passing 100%.
+- **Milestone M4:** Deep generative and sequence models benchmarked under distribution shift.
+
+---
+
+### Phase 5: Bandits, Sequential Decision-Making & Reinforcement Learning
+- **Prerequisites:** Phase 1 (M1) and Phase 4 (M4).
+- **Scope & Modules:**
+  - `quantforge.rl_bandits.mab`: $\epsilon$-Greedy, UCB1, and Thompson Sampling bandit policies.
+  - `quantforge.rl_bandits.risk_bandits`: CVaR-UCB and robust exploration under heavy-tailed rewards.
+  - `quantforge.rl_bandits.environment`: Gymnasium-compliant financial trading MDP with transaction costs and drawdown penalties.
+  - `quantforge.rl_bandits.drl_portfolio`: Proximal Policy Optimization (PPO) continuous asset allocator on the probability simplex.
+- **Verification & Acceptance:**
+  - UCB1 regret exhibits logarithmic growth $\mathcal{O}(\log T)$ on stationary synthetic arms (`NUM_TOLERANCE`).
+  - DRL portfolio weights strictly respect budget constraints ($\sum w_i = 1, w_i \ge 0$) (`MATH_INVARIANT`).
+  - Risk-sensitive CVaR-UCB evaluated under heavy-tailed Pareto shocks; trade-offs reported (`EMP_HYPOTHESIS`).
+  - `pytest tests/test_rl_bandits/` passing 100%.
+- **Milestone M5:** Sequential decision-making policies validated in controlled financial environments.
+
+---
+
+### Phase 6: Robust Portfolio Optimization & Transaction Cost Modeling
+- **Prerequisites:** Phase 1 (M1) and Phase 2 (M2).
+- **Scope & Modules:**
+  - `quantforge.portfolio.convex_opt`: Markowitz mean-variance quadratic programming using CVXPY (OSQP/SCS).
+  - `quantforge.portfolio.covariance`: Ledoit-Wolf analytical shrinkage and Random Matrix Theory covariance filtering.
+  - `quantforge.portfolio.transaction_costs`: Non-smooth optimization incorporating $\ell_1$ spread and quadratic impact costs.
+  - `quantforge.portfolio.robust_opt`: Minimax robust allocation under ellipsoidal return uncertainty sets.
+- **Verification & Acceptance:**
+  - KKT optimality conditions verified with primal gap $< 10^{-6}$ (`NUM_TOLERANCE`).
+  - Analytical 2-asset minimum variance solution matched within $10^{-7}$ (`NUM_TOLERANCE`).
+  - Transaction cost penalty strictly reduces portfolio turnover monotonically (`MATH_INVARIANT`).
+  - Robust optimization compared against naive $1/N$ out-of-sample under friction (`EMP_HYPOTHESIS`).
+  - `pytest tests/test_portfolio/` passing 100%.
+- **Milestone M6:** Convex and robust portfolio optimization engines validated under realistic market frictions.
+
+---
+
+### Phase 7: Quantitative Research Protocol, EVT Risk & Scientific Validation
+- **Prerequisites:** Phases 1 through 6.
+- **Scope & Modules:**
+  - `quantforge.research.walk_forward`: Chronological expanding/rolling window runner with purging/embargo.
+  - `quantforge.research.leakage_guard`: Automated runtime assertions preventing future information contamination.
+  - `quantforge.research.evt`: Peaks-Over-Threshold (POT) Generalized Pareto Distribution fitting with Kupiec/Christoffersen backtesting.
+  - `quantforge.research.multiple_testing`: Bonferroni, Benjamini-Hochberg FDR, and White's Reality Check routines.
+  - `quantforge.research.ablation`: Automated ablation engine and failed hypothesis registry.
+- **Verification & Acceptance:**
+  - Leakage guard aborts if $\max(\text{train}) \ge \min(\text{test})$ (`MATH_INVARIANT`).
+  - Kupiec and Christoffersen likelihood ratio test statistics match numerical fixtures (`STAT_VALIDATION`).
+  - Multiple testing corrections properly control Family-Wise Error Rate on synthetic noise (`STAT_VALIDATION`).
+  - Unconditional vs conditional EVT evaluated on historical crisis data; failure of unconditional independence documented (`EMP_HYPOTHESIS`).
+  - `pytest tests/test_research/` passing 100%.
+- **Milestone M7:** Comprehensive empirical research protocol and extreme tail-risk engine fully operational.
+
+---
+
+### Phase 8: Offline Research Dashboard & End-to-End Replication Suite
+- **Prerequisites:** Phase 7 (M7).
+- **Scope & Modules:**
+  - `quantforge.dashboard.artifact_reader`: Safe reader deserializing verified JSON and Parquet experiment outputs.
+  - `quantforge.dashboard.report_gen`: Self-contained HTML/Markdown research tear-sheets, risk summaries, and ablation matrices.
+  - `experiments/run_all_replications.py`: Single-command replication harness executing all 7 core research experiments.
+- **Verification & Acceptance:**
+  - Dashboard parses real artifacts from all 7 experiments without mock data (`DOC_REPRO`).
+  - Zero crashes on Windows PowerShell execution.
+  - Single master replication script reproduces all metric tables and figures (`DOC_REPRO`).
+- **Milestone M8:** QUANTFORGE X complete, fully tested, documented, and reproducible.
+
+---
+
+## 3. Hardware Budget & Computational Strategy
+
+| Component | Primary Compute Device | CPU Threading | RAM Requirement | GPU Acceleration (Optional) | Execution Time Estimate |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| Math & SDE Solvers | CPU | 4–8 Cores (NumPy SIMD) | $\le 4$ GB | Not required | $< 15$ seconds |
+| Black-Scholes & Monte Carlo | CPU | Multi-threaded vectorized | $\le 4$ GB | Optional (PyTorch CUDA if $N > 10^7$) | $< 45$ seconds |
+| Kernel Methods & GPs | CPU | Intel MKL / Cholesky | $\le 8$ GB | Optional (GPyTorch CUDA if $N > 10^4$) | 1–3 minutes |
+| Transformers & Diffusion | CPU / GPU | PyTorch DataLoader | 8–16 GB | Highly recommended (NVIDIA RTX) for fast training; CPU fallback supported | 5–15 mins (GPU) / 30–60 mins (CPU) |
+| Risk-Sensitive Bandits & MAB | CPU | Multi-threaded | $\le 4$ GB | Not required | $< 2$ minutes |
+| Convex Portfolio Optimization | CPU | CVXPY / OSQP | $\le 4$ GB | Not required | $< 1$ minute |
+| EVT Tail Risk & Walk-Forward | CPU | Vectorized Pandas/NumPy | $\le 8$ GB | Not required | 2–5 minutes |
+
+---
+
+## 4. Phase 0.1 Change Log & Audit Summary
+
+- **Scoped Smallest Defensible Milestone (Phase 1):** Explicitly isolated Phase 1 to Core Infrastructure, Probability Distributions, Brownian Motion, and 1D SDE Solvers with Itô validation, deferring derivatives, portfolio, and deep learning engines.
+- **Separated Criteria Taxonomy in Checklists:** Updated sign-off criteria for all 8 phases to explicitly mark tests as `MATH_INVARIANT`, `NUM_TOLERANCE`, `STAT_VALIDATION`, or `EMP_HYPOTHESIS`.
+- **Enforced Baseline-First Sequencing:** Structured Phase 4 (Deep Learning) to strictly require Phase 3 (Linear & Kernel Baselines) and Phase 6 (Portfolio Optimization) to require Phase 1 and 2 foundations.

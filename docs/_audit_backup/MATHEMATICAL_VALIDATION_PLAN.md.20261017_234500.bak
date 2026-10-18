@@ -1,0 +1,196 @@
+# MATHEMATICAL & SCIENTIFIC VALIDATION PLAN
+
+**QUANTFORGE X — Analytical Benchmarks, Numerical Convergence Limits & Mathematical Proofs**
+
+---
+
+## 1. Principles of Mathematical Validation & Criteria Taxonomy
+
+In QUANTFORGE X, no quantitative routine is considered complete merely because code executes without raising an exception. However, scientific rigor also demands that we do not conflate **software correctness** with **empirical research hypotheses**.
+
+Every validation test and acceptance criterion in this laboratory is strictly categorized into one of six classes:
+
+1. **`MATH_INVARIANT` (Analytical Invariant):** Closed-form identity or exact mathematical property that must hold to floating-point precision (e.g., Put-Call Parity, cash-flow conservation, row-stochasticity). **Status: PASS/FAIL.**
+2. **`NUM_TOLERANCE` (Numerical Approximation Tolerance):** Discretization error or optimization convergence governed by proven asymptotic rates (e.g., SDE strong error slope, Monte Carlo log-log error decay, KKT duality gap). **Status: PASS/FAIL.**
+3. **`STAT_VALIDATION` (Statistical Algorithm Verification):** Statistical property of an algorithm verified on *synthetic data with known ground truth* (e.g., MLE consistency, KS-test on pseudo-random variates, coverage of credible intervals under true model). **Status: PASS/FAIL (with controlled Type I error).**
+4. **`EMP_HYPOTHESIS` (Empirical Research Hypothesis):** A testable scientific hypothesis evaluated on real market data (e.g., whether deep learning beats linear baselines, whether EVT-VaR passes Kupiec tests during crashes, whether risk-sensitive bandits reduce drawdown). **Status: SCIENTIFIC OUTCOME (Both positive and negative results are valid deliverables; NEVER a software pass/fail gate).**
+5. **`PERF_BENCHMARK` (Performance & Resource Constraint):** Execution time, memory footprint, or hardware compatibility limits. **Status: PASS/FAIL.**
+6. **`DOC_REPRO` (Documentation & Reproducibility):** SHA-256 configuration hashes, seed logging, artifact registration, and failure registry entries. **Status: PASS/FAIL.**
+
+---
+
+## 2. Mathematical Benchmark Inventory & Taxonomy
+
+```
++--------------------------------------------------------------------------------------------------------------------+
+|                                         MATHEMATICAL VALIDATION MAP                                                |
++--------------------------------------------------------------------------------------------------------------------+
+| COMPONENT                   | NUMERICAL METHOD              | THEORETICAL BENCHMARK           | CLASSIFICATION     |
+|-----------------------------+-------------------------------+---------------------------------+--------------------|
+| Black-Scholes European Call | Monte Carlo Path Average      | Black-Scholes Formula: C = S... | MATH_INVARIANT     |
+| SDE Path Discretization     | Euler-Maruyama & Milstein     | Strong Error: E|X_T - X_num|    | NUM_TOLERANCE      |
+| Itô Calculus                | Discrete Stochastic Sums      | Itô Formula: int W dW in L^2    | NUM_TOLERANCE      |
+| Variance Reduction          | Antithetic & Control Variates | Total Variance Decomposition    | NUM_TOLERANCE      |
+| Tail Distribution Fitting   | Hill Estimator / GPD MLE      | Ground Truth Tail Index alpha   | STAT_VALIDATION    |
+| Gaussian Process Regression | Cholesky Posterior Solver     | Exact Gaussian Conditioning     | NUM_TOLERANCE      |
+| Portfolio Optimization      | Convex QP Solvers (OSQP/SCS)  | KKT Optimality & Analytical 2-A | NUM_TOLERANCE      |
+| Tail Risk Backtesting       | EVT Peaks-Over-Threshold      | Kupiec POF & Christoffersen     | EMP_HYPOTHESIS     |
+| Deep vs Linear Forecasting  | TCN / Transformer vs Ridge    | Out-of-sample RMSE & MASE       | EMP_HYPOTHESIS     |
+| Risk-Sensitive Bandits      | CVaR-UCB vs Standard UCB1     | Worst 5% Drawdown & Regret      | EMP_HYPOTHESIS     |
++--------------------------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 3. Detailed Component Validation Protocols
+
+### 3.1 Option Pricing: Black-Scholes Analytical vs Monte Carlo vs PDE
+
+#### The Analytical Ground Truth (`MATH_INVARIANT`):
+For a non-dividend paying stock governed by geometric Brownian motion $dS_t = r S_t dt + \sigma S_t dW_t$, the exact European call price is:
+$$C_{\text{BS}}(S_0, K, r, \sigma, T) = S_0 \Phi(d_1) - K e^{-rT} \Phi(d_2)$$
+$$d_1 = \frac{\ln(S_0/K) + (r + \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}}, \quad d_2 = d_1 - \sigma \sqrt{T}$$
+
+#### Put-Call Parity Identity (`MATH_INVARIANT`):
+Across any strike grid $K \in [50, 150]$, maturity $T \in [0.1, 3.0]$, and volatility $\sigma \in [0.05, 0.8]$:
+$$|C_{\text{BS}} - P_{\text{BS}} - (S_0 - K e^{-rT})| < 10^{-12}$$
+
+#### Monte Carlo Convergence & Confidence Bounds (`STAT_VALIDATION` vs `NUM_TOLERANCE`):
+The discounted Monte Carlo estimator is:
+$$\hat{C}_{\text{MC}} = e^{-rT} \frac{1}{N} \sum_{i=1}^N \max(S_T^{(i)} - K, 0)$$
+By the Central Limit Theorem, $\sqrt{N}(\hat{C}_{\text{MC}} - C_{\text{BS}}) \xrightarrow{d} \mathcal{N}(0, \sigma_{\text{payoff}}^2)$.
+1. **Deterministic Test:** For a fixed pseudo-random seed (e.g. `seed=42`) with $N = 100,000$, verify that the precomputed estimate matches expected value within $10^{-6}$.
+2. **Empirical Coverage Validation:** Across $K = 200$ independent runs with fresh seeds, record the proportion of 99% confidence intervals $\left[\hat{C}_{\text{MC}} \pm 2.576 \frac{\hat{\sigma}}{\sqrt{N}}\right]$ that contain $C_{\text{BS}}$.
+   - *Acceptance Criterion (`STAT_VALIDATION`):* Empirical coverage must fall in $[96.0\%, 100.0\%]$ (Binomial test fails to reject nominal $99\%$ at $\alpha=0.01$).
+3. **Asymptotic Convergence Order (`NUM_TOLERANCE`):**
+   Plot $\ln(\text{RMSE})$ against $\ln(N)$ for $N \in \{10^3, 10^4, 10^5, 10^6\}$.
+   - *Acceptance Criterion:* Empirical linear regression slope must lie in $[-0.55, -0.45]$ (theoretical CLT rate is $-0.50$).
+
+#### Finite Difference PDE Consistency (`NUM_TOLERANCE`):
+Solve the Black-Scholes PDE using the Crank-Nicolson implicit scheme on a space-time grid $(M_S, N_t)$.
+- *Acceptance Criterion:* Absolute pricing error $|C_{\text{PDE}} - C_{\text{BS}}| < 10^{-4}$ on interior grid points ($0.5 K \le S \le 1.5 K$).
+
+---
+
+### 3.2 Stochastic Calculus & Itô's Lemma Verification
+
+#### Mathematical Foundation & Discrepancy Analysis:
+By Itô's formula, for standard Brownian motion $W_t$:
+$$\int_0^T W_t dW_t = \frac{1}{2}(W_T^2 - T)$$
+Consider the discrete Riemann-Stieltjes / Itô sum with step size $\Delta t = T/M$:
+$$I_{\text{discrete}} = \sum_{k=0}^{M-1} W_{t_k} (W_{t_{k+1}} - W_{t_k})$$
+By the algebraic telescoping identity:
+$$W_T^2 = \sum_{k=0}^{M-1} (W_{t_{k+1}}^2 - W_{t_k}^2) = \sum_{k=0}^{M-1} (W_{t_{k+1}} - W_{t_k})(2 W_{t_k} + \Delta W_k) = 2 I_{\text{discrete}} + \sum_{k=0}^{M-1} (\Delta W_k)^2$$
+Rearranging gives the exact pathwise discrepancy:
+$$I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T) = \frac{1}{2} \left( T - \sum_{k=0}^{M-1} (\Delta W_k)^2 \right)$$
+The error between the discrete sum and the Itô integral is precisely half the difference between time $T$ and the discrete quadratic variation!
+
+#### Convergence in $L^2$ Norm (`NUM_TOLERANCE`):
+Since $\Delta W_k \sim \mathcal{N}(0, \Delta t)$ are i.i.d., $(\Delta W_k)^2$ has mean $\Delta t$ and variance $2(\Delta t)^2$.
+$$\text{Var}\left(\sum_{k=0}^{M-1} (\Delta W_k)^2\right) = M \times 2(\Delta t)^2 = 2 M \left(\frac{T}{M}\right)^2 = \frac{2 T^2}{M} = 2 T \Delta t$$
+Therefore, the theoretical root mean square error is:
+$$\left\| I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T) \right\|_{L^2} = \sqrt{\mathbb{E}\left[\left| I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T) \right|^2\right]} = \frac{1}{2} \sqrt{2 T \Delta t} = \sqrt{\frac{T \Delta t}{2}}$$
+- *Acceptance Criterion (`NUM_TOLERANCE`):*
+  Evaluate over an ensemble of $P = 10,000$ paths for step sizes $M \in \{10^2, 10^3, 10^4\}$.
+  The linear regression slope of $\ln(\text{RMSE})$ vs $\ln(\Delta t)$ must lie in $[0.45, 0.55]$, confirming convergence of quadratic variation at rate $\mathcal{O}(\sqrt{\Delta t})$.
+
+---
+
+### 3.3 SDE Solvers: Euler-Maruyama vs Milstein Schemes
+
+For the 1D autonomous stochastic differential equation:
+$$dX_t = a(X_t) dt + b(X_t) dW_t, \quad X_0 = x_0$$
+
+#### Numerical Schemes:
+- **Euler-Maruyama:**
+  $$X_{k+1} = X_k + a(X_k) \Delta t + b(X_k) \Delta W_k$$
+- **Milstein Scheme:**
+  $$X_{k+1} = X_k + a(X_k) \Delta t + b(X_k) \Delta W_k + \frac{1}{2} b(X_k) b'(X_k) \left( (\Delta W_k)^2 - \Delta t \right)$$
+
+#### Regularity Assumptions & Commutativity:
+- **Euler-Maruyama** requires drift $a(x)$ and diffusion $b(x)$ to be Lipschitz continuous and satisfy linear growth bounds:
+  $$\text{Strong Order: } \gamma = 0.5, \quad \text{Weak Order: } \beta = 1.0$$
+- **Milstein** requires $b \in C^1$ with Lipschitz derivative $b'(x)$. In multi-dimensional SDEs ($d > 1$), Milstein requires the commutativity condition $\sum_k b_{k, j_1} \frac{\partial b_{i, j_2}}{\partial x_k} = \sum_k b_{k, j_2} \frac{\partial b_{i, j_1}}{\partial x_k}$ to avoid simulating double stochastic integrals (Lévy areas). For 1D GBM ($b(x) = \sigma x$), commutativity holds trivially:
+  $$\text{Strong Order: } \gamma = 1.0, \quad \text{Weak Order: } \beta = 1.0$$
+
+#### Strong Error Validation (`NUM_TOLERANCE`):
+Apply both solvers to 1D Geometric Brownian Motion where the exact analytical solution on the same Brownian path $W_t$ is:
+$$X_t = X_0 \exp\left( (\mu - \frac{1}{2}\sigma^2)t + \sigma W_t \right)$$
+1. Generate fine Brownian paths on grid $\delta t = 10^{-5}$ to construct exact reference values.
+2. Evaluate solvers on coarse sub-grids $\Delta t \in \{10^{-1}, 5\times 10^{-2}, 2\times 10^{-2}, 10^{-2}\}$.
+3. Compute Strong Error: $\epsilon_{\text{strong}}(\Delta t) = \mathbb{E}\left[ |X_T^{\text{approx}} - X_T^{\text{exact}}| \right]$ across $P = 10,000$ paired paths.
+- *Acceptance Criterion (`NUM_TOLERANCE`):*
+  - Euler-Maruyama slope of $\ln \epsilon_{\text{strong}}$ vs $\ln \Delta t$ lies in $[0.45, 0.55]$.
+  - Milstein slope of $\ln \epsilon_{\text{strong}}$ vs $\ln \Delta t$ lies in $[0.90, 1.10]$.
+
+#### Weak Error Validation (`NUM_TOLERANCE`):
+Compute weak error for observable $g(x) = x^2$:
+$$\epsilon_{\text{weak}}(\Delta t) = \left| \frac{1}{P}\sum_{i=1}^P g(X_T^{\text{approx}, (i)}) - \mathbb{E}[g(X_T^{\text{exact}})] \right|$$
+- *Acceptance Criterion (`NUM_TOLERANCE`):* Weak error scales as $\mathcal{O}(\Delta t)$ for both Euler and Milstein schemes.
+
+---
+
+### 3.4 Monte Carlo Variance Reduction Verification
+
+#### Analytical Foundation (`NUM_TOLERANCE`):
+Let $Y = \max(S_T - K, 0)$ be the European option payoff, and $X = e^{-rT} S_T$ be the control variate with known expectation $\mathbb{E}[X] = S_0$.
+The optimal control variate estimator is:
+$$\hat{Y}_{\text{CV}} = \bar{Y} - \beta^* (\bar{X} - S_0), \quad \beta^* = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
+The variance reduction ratio is:
+$$\frac{\text{Var}(\hat{Y}_{\text{CV}})}{\text{Var}(\bar{Y})} = 1 - \rho_{X, Y}^2$$
+Where $\rho_{X, Y}$ is the correlation between asset price and payoff.
+
+#### Verification Protocol:
+1. Benchmark Setup: Standard at-the-money contract ($S_0=100, K=100, r=0.05, \sigma=0.20, T=1.0$).
+2. *Acceptance Criterion (`NUM_TOLERANCE`):*
+   - Antithetic variates achieves $\text{VRF}_{\text{Antithetic}} = \frac{\text{Var}(\hat{C}_{\text{crude}})}{\text{Var}(\hat{C}_{\text{anti}})} \ge 1.4$.
+   - Control variates achieves $\text{VRF}_{\text{Control}} = \frac{\text{Var}(\hat{C}_{\text{crude}})}{\text{Var}(\hat{C}_{\text{control}})} \ge 3.5$.
+3. *Note on Parameter Regimes (`EMP_HYPOTHESIS`):* For deep out-of-the-money options ($K \gg S_0$) or high volatility ($\sigma \sqrt{T} \ge 1.5$), correlation $\rho_{X, Y}$ drops; the code must document this decay rather than failing a test.
+
+---
+
+### 3.5 Heavy Tails, Hill Estimator & Extreme Value Theory
+
+#### Tail Index Estimation on Synthetic Data (`STAT_VALIDATION`):
+Under a Pareto distribution $P(X > x) = (x / x_m)^{-\alpha}$, the Hill estimator on the top $k$ order statistics is:
+$$\hat{\alpha}_{\text{Hill}}(k) = \left( \frac{1}{k} \sum_{i=1}^k \ln \frac{X_{(n-i+1)}}{X_{(n-k)}} \right)^{-1}$$
+- *Acceptance Criterion (`STAT_VALIDATION`):* On $N = 50,000$ synthetic Pareto variates with $\alpha_{\text{true}} = 2.5$, the mean estimate across the stable plateau $k \in [500, 2000]$ must satisfy $|\hat{\alpha} - 2.5| / 2.5 \le 0.10$.
+
+#### EVT Peaks-Over-Threshold (POT) VaR Backtest (`EMP_HYPOTHESIS`):
+Let $u$ be a high threshold. Excess losses $Y = X - u$ are modeled by the Generalized Pareto Distribution (GPD):
+$$G_{\xi, \beta}(y) = 1 - \left(1 + \frac{\xi y}{\beta}\right)^{-1/\xi}$$
+VaR at level $q > F(u)$ is:
+$$\text{VaR}_q = u + \frac{\beta}{\xi} \left( \left(\frac{N}{N_u} (1 - q)\right)^{-\xi} - 1 \right)$$
+- *Implementation Verification (`STAT_VALIDATION`):* Kupiec POF Likelihood Ratio statistic and Christoffersen independence test statistic implementations match verified numerical test fixtures within $10^{-8}$.
+- *Scientific Research Evaluation (`EMP_HYPOTHESIS`):*
+  Evaluate 99% 1-day VaR during historical crisis regimes (2008 GFC, March 2020).
+  - Unconditional POT vs GARCH-filtered conditional EVT are evaluated.
+  - If unconditional POT experiences clustered exceptions during rapid volatility spikes, this is documented as an empirical research finding consistent with McNeil & Frey (2000), not an implementation failure!
+
+---
+
+### 3.6 Convex Optimization & KKT Conditions
+
+#### Formulation:
+$$\min_{w} \frac{1}{2} w^T \Sigma w - \lambda \mu^T w \quad \text{s.t.} \quad \mathbf{1}^T w = 1, \quad 0 \le w_i \le u_i$$
+
+#### Analytical Benchmark (`MATH_INVARIANT` / `NUM_TOLERANCE`):
+For $N = 2$ uncorrelated assets ($\sigma_{12} = 0$), the unconstrained minimum variance allocation is:
+$$w_1^* = \frac{\sigma_2^2}{\sigma_1^2 + \sigma_2^2}, \quad w_2^* = \frac{\sigma_1^2}{\sigma_1^2 + \sigma_2^2}$$
+- *Acceptance Criterion (`NUM_TOLERANCE`):* CVXPY numerical solution matches analytical weights within $|w_{\text{num}} - w_{\text{analytical}}| < 10^{-7}$.
+
+#### Solver Tolerances & KKT Audit (`NUM_TOLERANCE`):
+When using first-order splitting solvers (OSQP, SCS), solver convergence tolerances must be explicitly configured:
+- OSQP: `eps_abs = 1e-7, eps_rel = 1e-7`.
+- Primal feasibility: $|\sum w_i - 1| \le 10^{-6}$ and $w_i \ge -10^{-6}$.
+- Complementary slackness: $|\lambda_i (w_i - u_i)| \le 10^{-5}$.
+
+---
+
+## 4. Phase 0.1 Change Log & Audit Summary
+
+- **Clarified Itô Integral Discrepancy:** Proved that pathwise discrepancy is identical to the quadratic variation error $\frac{1}{2}(T - \sum (\Delta W)^2)$, and established that convergence must be measured in $L^2$ norm across path ensembles ($\mathcal{O}(\sqrt{\Delta t})$), eliminating ambiguous single-path scalar assertions.
+- **Formulated Strong vs Weak SDE Convergence:** Explicitly defined strong ($L^1$ pathwise) vs weak convergence orders and documented mandatory regularity conditions ($b \in C^1$ and commutativity for Milstein).
+- **Separated Flaky Confidence Intervals from Regression Tests:** Eliminated probabilistic 99% CI failures on random single seeds in unit tests, replacing them with deterministic seed checks and multi-trial binomial coverage tests.
+- **Reclassified Empirical Hypotheses:** Categorized EVT backtests, diffusion stylized facts, risk-sensitive bandit drawdowns, and deep learning performance as `EMP_HYPOTHESIS`. Defined valid negative research findings as primary deliverables rather than build failures.
+- **Harmonized Solver Settings & Tolerances:** Aligned KKT complementary slackness and feasibility checks with realistic numerical solver parameters (`eps_abs`, `eps_rel`).

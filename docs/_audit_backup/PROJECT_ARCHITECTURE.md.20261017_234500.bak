@@ -1,0 +1,233 @@
+# PROJECT ARCHITECTURE & SYSTEM DESIGN
+
+**QUANTFORGE X — Technical Architecture, Layered System Design & Engineering Standards**
+
+---
+
+## 1. Architectural Philosophy & Principles
+
+QUANTFORGE X is engineered not as a loose collection of disparate Jupyter notebooks, but as an integrated, production-grade quantitative research laboratory. The architecture is governed by five non-negotiable principles:
+
+1. **Mathematical Transparency & Modular Separation:** Foundational mathematical engines (SDE solvers, Itô calculus, distributions) are completely decoupled from downstream consumer modules (pricing engines, portfolio optimizers, RL agents).
+2. **Strict Provenance & Anti-Leakage Separation:** Synthetic simulation environments (where true underlying parameters are known by construction) are strictly segregated from empirical market data experiments. The data layer enforces point-in-time timestamp causality at the tensor level.
+3. **Reproducibility by Design:** Every experiment execution is completely deterministic and reproducible via cryptographic configuration hashing (`SHA-256`), explicit pseudorandom number generator (PRNG) state management, and unified artifact manifests.
+4. **Parsimony & Baseline-First Hierarchy:** No advanced deep learning or sequential decision model is trained without an automated, contemporaneous evaluation against an appropriate classical baseline (e.g., OLS/Ridge vs Transformers; UCB1 vs Risk-Sensitive Bandits; Markowitz vs DRL).
+5. **Windows-Native Robustness:** Fully native to Windows 10/11 environments using Python 3.11+, standard PowerShell scripts, and cross-platform compute libraries (PyTorch, CVXPY, NumPy, SciPy) without requiring fragile POSIX emulation or custom C++ toolchains during initial setup.
+
+---
+
+## 2. Layered Architecture Diagram
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    LAYER 9: DASHBOARD & CLI                                        |
+|             Offline Artifact Reader  *  Interactive HTML Reports  *  CLI Experiment Runner         |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                          LAYER 8: RESEARCH PROTOCOL & STATISTICAL INTEGRITY                        |
+|       Walk-Forward Splits  *  EVT Tail Risk (POT)  *  Multiple Testing (FDR/Bonferroni)           |
+|       Ablation Runner      *  Regime Shift Auditing *  Failed Hypothesis Registry                   |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++-----------------------------------+   +------------------------------------+   +-------------------+
+| LAYER 6: BANDITS & RL DECISIONS   |   | LAYER 7: OPTIMIZATION & PORTFOLIO  |   | LAYER 5: DEEP AI  |
+| * Multi-Armed Bandits (UCB, TS)   |   | * Convex Solvers (CVXPY / OSQP)    |   | * TCN (Causal)    |
+| * Risk-Sensitive Bandits (CVaR)   |   | * Transaction Cost & Turnover      |   | * Transformers    |
+| * Financial MDP & Reward Tuning   |   | * Robust & Shrinkage Allocations   |   | * Diffusion SDEs  |
+| * DRL Asset Allocators (PPO)      |   | * Factor Risk & Covariance Models  |   | * Stylized Facts  |
++-----------------------------------+   +------------------------------------+   +-------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                      LAYER 3: FINANCIAL ENGINEERING & DERIVATIVES PRICING                          |
+|       Black-Scholes Analytical  *  Monte Carlo Derivative Engines  *  Analytical/FD Greeks         |
+|       Volatility Smile Fitting  *  Securitized Cash-Flow Waterfall *  Tranche Risk Engine          |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                         LAYER 4: STATISTICAL LEARNING & KERNEL METHODS                             |
+|       Regularized Linear Models (Ridge, Lasso)  *  Support Vector Machines (SVR/SVC)               |
+|       Reproducing Kernel Hilbert Spaces (RKHS)  *  Gaussian Processes (Bayesian Uncertainty)       |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                      LAYER 2: MATHEMATICAL FOUNDATIONS & STOCHASTIC ENGINES                        |
+|       Heavy-Tailed Distributions  *  SDE Solvers (Euler/Milstein)  *  Itô Calculus & Quadratures   |
+|       Brownian Motion Generators  *  Markov Chains & Transitions   *  Variance Reduction Techniques|
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                              LAYER 1: DATA ENGINE & PROVENANCE LAYER                               |
+|       Point-in-Time Parquet Store  *  Zero-Leakage Lag Transformers *  Synthetic Scenario Gen      |
+|       FRED Macro Ingestion         *  Public Mortgage Pool Parser   *  Data Integrity Assertions   |
++----------------------------------------------------------------------------------------------------+
+                                                  |
++----------------------------------------------------------------------------------------------------+
+|                              LAYER 0: CORE SYSTEM INFRASTRUCTURE                                   |
+|       Config Manager (YAML/Pydantic)  *  Cryptographic Registry  *  Deterministic PRNG Seeding      |
+|       Logging & Exception System      *  Base Interfaces & Types *  Hardware / Device Dispatch     |
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 3. Detailed Component Decomposition & Modules
+
+### Layer 0: Core Infrastructure (`quantforge.core`)
+- **`config.py`**: Immutable, typed Pydantic models for experiment configurations. Handles versioning, inheritance, and parameter validation.
+- **`seeding.py`**: Centralized seed management ensuring reproducible pseudo-random states across Python `random`, `numpy.random`, and `torch.manual_seed`.
+- **`registry.py`**: Cryptographic artifact manager. Calculates `SHA-256` hashes of input configurations and registers experiment runs, outputs, and git commit hashes.
+- **`base.py`**: Abstract base classes (`BaseModel`, `BaseDataset`, `BaseEnvironment`, `BaseSolver`, `BaseExperiment`, `BaseRiskModel`).
+- **`device.py`**: Hardware abstraction detecting CPU, NVIDIA CUDA, or fallback compute devices.
+
+### Layer 1: Data Engine & Provenance (`quantforge.data`)
+- **`provenance.py`**: Data container tagging every dataset with source metadata (`SOURCE_TYPE`: `SYNTHETIC_SIMULATION`, `HISTORICAL_DAILY`, or `CALIBRATED_BENCHMARK`).
+- **`store.py`**: Immutable columnar storage (Parquet) optimized for local Windows filesystem storage.
+- **`transforms.py`**: Temporal transform engine (log returns, rolling volatility, standardized features). Enforces strict causal lag transforms $x_t = f(\{p_\tau\}_{\tau \le t})$.
+- **`leakage_guard.py`**: Runtime assertion layer verifying that no feature index exceeds or equals target timestamps during training or preprocessing.
+- **`synthetic_gen.py`**: Parametric generators for Geometric Brownian Motion, Merton Jump-Diffusion, and Heston Stochastic Volatility paths.
+
+### Layer 2: Mathematical Foundations (`quantforge.math`)
+- **`distributions.py`**: Continuous probability distributions (Gaussian, Student's t, Log-normal, Pareto, GEV) with analytical moments and SciPy MLE routines.
+- **`sde.py`**: Vectorized SDE simulation engines implementing Euler-Maruyama and Milstein schemes with exact error tracking.
+- **`ito.py`**: Discrete stochastic calculus engine verifying Itô's formula, Itô isometry, and pathwise quadratic variation.
+- **`heavy_tails.py`**: Power-law tail index estimation, Hill estimator routines, and subexponential property validators.
+- **`markov.py`**: Discrete-time Markov chain transition matrix estimation, Chapman-Kolmogorov validation, and stationary distribution eigensolvers.
+- **`variance_reduction.py`**: Variance reduction modules (Antithetic variates, Control variates, Importance sampling).
+
+### Layer 3: Financial Engineering & Pricing (`quantforge.pricing`)
+- **`black_scholes.py`**: Vectorized European call/put analytical pricing formulas, Put-Call parity verifier, and closed-form Greeks.
+- **`monte_carlo.py`**: Path-dependent and European option pricer with confidence intervals and batch convergence monitors.
+- **`greeks.py`**: Dual-mode Greek calculation (analytical derivatives vs numerical finite-difference approximations).
+- **`securitization.py`**: Discrete cash-flow waterfall modeling senior, mezzanine, and equity tranches with CPR prepayment and Poisson default hazard rates.
+
+### Layer 4: Statistical Learning & Kernels (`quantforge.statlearn`)
+- **`regression.py`**: OLS, Ridge, Lasso, and ElasticNet estimators with path tracing and coordinate descent.
+- **`svm.py`**: Support Vector Regression and Classification wrappers with primal/dual formulation audit.
+- **`kernels.py`**: RKHS kernel library (Linear, RBF, Matérn, Polynomial, and financial Volatility-Adjusted Kernels) with Gram matrix eigenspectrum checks.
+- **`gaussian_process.py`**: Exact Gaussian Process regression with analytical posterior mean/covariance and Bayesian credible intervals.
+- **`calibration.py`**: Uncertainty calibration engine calculating Expected Calibration Error (ECE) and reliability diagrams.
+
+### Layer 5: Modern AI & Deep Architectures (`quantforge.deeplearn`)
+- **`networks.py`**: Baseline Multi-Layer Perceptrons (MLPs) and Temporal Convolutional Networks (TCN) with causal dilations.
+- **`transformers.py`**: Causal self-attention layers and decoder-only Transformer blocks with triangular causal masking.
+- **`diffusion.py`**: 1D temporal Denoising Diffusion Probabilistic Model (DDPM) for synthetic financial return generation.
+- **`stylized_facts.py`**: Quantitative validator asserting preservation of financial stylized facts (fat tails, volatility clustering, autocorrelation decay).
+
+### Layer 6: Bandits & Sequential Decisions (`quantforge.rl_bandits`)
+- **`mab.py`**: Multi-Armed Bandit implementations ($\epsilon$-Greedy, UCB1, Thompson Sampling) with theoretical regret tracking.
+- **`risk_bandits.py`**: Risk-sensitive bandits implementing CVaR-UCB and robust exploration under heavy-tailed distributions.
+- **`environment.py`**: Gymnasium-compatible financial trading MDP supporting discrete/continuous states, transaction costs, and portfolio constraints.
+- **`drl_portfolio.py`**: Deep Reinforcement Learning asset allocation agent (PPO/Actor-Critic) outputting continuous portfolio weights on the simplex.
+
+### Layer 7: Optimization & Portfolio Engine (`quantforge.portfolio`)
+- **`convex_opt.py`**: Markowitz mean-variance optimization, minimum-variance, and tangency portfolio solvers using CVXPY (OSQP/SCS).
+- **`constraints.py`**: Flexible constraint specifications (long-only, weight box bounds, sector caps, target return/risk).
+- **`transaction_costs.py`**: Quadratic market-impact and linear bid-ask spread penalty modeling.
+- **`robust_opt.py`**: Robust portfolio optimization with ellipsoidal return uncertainty sets and Ledoit-Wolf shrinkage covariance integration.
+
+### Layer 8: Research Protocol, Risk & Validation (`quantforge.research`)
+- **`walk_forward.py`**: Chronological expanding and rolling window validation runner with configurable purge/embargo periods.
+- **`evt.py`**: Extreme Value Theory engine implementing Peaks-Over-Threshold (POT), Generalized Pareto Distribution (GPD) fitting, and Kupiec/Christoffersen VaR backtests.
+- **`multiple_testing.py`**: Bonferroni, Benjamini-Hochberg FDR, and White's Reality Check correction algorithms.
+- **`ablation.py`**: Automated ablation engine executing systematic component knockouts.
+- **`failure_registry.py`**: Structured failure logging documenting non-viable hypotheses, degraded regimes, and rejected models.
+
+### Layer 9: Dashboard & Reporting (`quantforge.dashboard`)
+- **`artifact_reader.py`**: Safe deserializer reading verified experiment JSON and Parquet artifacts.
+- **`report_gen.py`**: Generates standalone, self-contained HTML/Markdown research tear-sheets and metric comparison tables.
+
+---
+
+## 4. Formal Interface Contracts
+
+To guarantee that components interoperate seamlessly without brittle coupling, all core modules adhere to strict abstract base classes defined in `quantforge.core.base`:
+
+```python
+# Conceptual Interface Contracts
+
+class BaseExperiment(ABC):
+    """Abstract lifecycle for all research experiments."""
+    @abstractmethod
+    def setup(self, config: ExperimentConfig) -> None: ...
+    @abstractmethod
+    def run(self) -> ExperimentResult: ...
+    @abstractmethod
+    def validate(self) -> ValidationReport: ...
+    @abstractmethod
+    def export_artifacts(self, artifact_dir: Path) -> None: ...
+
+class BasePricer(ABC):
+    """Abstract interface for derivatives pricing engines."""
+    @abstractmethod
+    def price(self, instrument: DerivativeInstrument) -> PricingResult: ...
+    @abstractmethod
+    def greeks(self, instrument: DerivativeInstrument) -> GreeksResult: ...
+
+class BaseBanditPolicy(ABC):
+    """Abstract interface for multi-armed and risk-sensitive bandits."""
+    @abstractmethod
+    def select_arm(self) -> int: ...
+    @abstractmethod
+    def update(self, arm: int, reward: float) -> None: ...
+    @abstractmethod
+    def get_regret(self) -> float: ...
+
+class BasePortfolioSolver(ABC):
+    """Abstract interface for portfolio optimization."""
+    @abstractmethod
+    def solve(self, expected_returns: np.ndarray, cov_matrix: np.ndarray,
+              constraints: PortfolioConstraints) -> OptimizationResult: ...
+```
+
+---
+
+## 5. Data Flow Architecture & Segregation
+
+The system establishes an absolute barrier between **Synthetic Path Generation** and **Empirical Market Data**:
+
+```
++------------------------------------+          +------------------------------------+
+|       SYNTHETIC GENERATOR          |          |      EMPIRICAL MARKET INGESTION    |
+| (GBM, Heston, OU, Jump-Diffusion)  |          |  (Yahoo Finance / FRED Daily Data) |
++------------------------------------+          +------------------------------------+
+                 |                                                 |
+       [Tag: SYNTHETIC_DATA]                             [Tag: HISTORICAL_DATA]
+                 |                                                 |
+                 v                                                 v
++------------------------------------+          +------------------------------------+
+|  MATHEMATICAL & SDE VERIFICATION   |          |    POINT-IN-TIME FEATURE STORE     |
+| * Analytical BS convergence tests  |          | * Strictly lagged feature matrix   |
+| * SDE strong/weak error checks     |          | * Purged & embargoed time windows  |
+| * Variance reduction benchmarks    |          | * Leakage assertion runtime audit  |
++------------------------------------+          +------------------------------------+
+                 |                                                 |
+                 +-----------------------+-------------------------+
+                                         |
+                                         v
+                        +---------------------------------+
+                        |    COMMON EXPERIMENT HARNESS    |
+                        | * Config Hashing & Seed Locking |
+                        | * Out-of-Sample Walk-Forward    |
+                        | * Baseline vs Advanced Models   |
+                        +---------------------------------+
+                                         |
+                                         v
+                        +---------------------------------+
+                        |   UNIFIED ARTIFACT GENERATOR    |
+                        | * JSON Metrics & Parameters     |
+                        | * High-Resolution PNG Plots     |
+                        | * Markdown Research Summaries   |
+                        +---------------------------------+
+```
+
+---
+
+## 6. Windows OS Compatibility & Compute Standards
+
+- **Filesystem Paths:** All path resolutions use Python's standard `pathlib.Path` ensuring proper handling of Windows backslashes (`\`) and drive letters (`C:\...`).
+- **Process Isolation:** Script execution is compatible with Windows PowerShell 7 and standard Windows command line environments without reliance on Bash or Unix-only utilities.
+- **Compute Acceleration Strategy:**
+  - Standard compute relies on multi-threaded NumPy / SciPy leveraging Intel MKL or OpenBLAS automatically provided with Windows wheels.
+  - Deep learning components (Layer 5) execute smoothly on CPU by default for rapid test validation, with automatic detection of NVIDIA CUDA via `torch.cuda.is_available()`.
+  - Heavy optimization tasks leverage CVXPY's native OSQP/SCS C-solvers precompiled for Windows.

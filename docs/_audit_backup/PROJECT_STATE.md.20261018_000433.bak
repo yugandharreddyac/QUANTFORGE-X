@@ -1,0 +1,113 @@
+# PROJECT STATE
+
+**QUANTFORGE X — Repository State, Baseline Facts & Audit Status**
+
+---
+
+## 1. Project Identity & Objective
+- **Project Name:** QUANTFORGE X
+- **Purpose:** An integrated educational quantitative-finance research laboratory covering stochastic calculus, financial engineering, statistical and kernel learning, modern AI, bandits and reinforcement learning, portfolio optimization, quantitative research and risk, and an offline reproducible dashboard.
+- **Institutional Status:** Independent educational and academic research project. It is **NOT** an official AlphaGrep or IIIT Hyderabad project and does not possess endorsement, proprietary access, or an exhaustive official curriculum.
+- **Current Phase:** **Phase 0.2: Scientific Audit, Evidence Recovery & Planning Revision** (Status: Audit in progress, pending independent review).
+
+---
+
+## 2. Verified Baseline Facts
+- **Host OS:** Windows 10/11 (Local time: 2026-10-17T23:40:18+05:30).
+- **Python Version:** Python 3.13.2 (verified via `python --version`).
+- **Git Availability:** `git` is NOT recognized in the PATH environment (verified via `git status` returning CommandNotFoundException).
+- **Node.js Availability:** `node` is NOT recognized in the PATH environment.
+- **C/C++ Compiler:** Not checked.
+- **Hardware / GPU:** Not checked.
+- **Repository Contents:** Exactly 10 planning markdown documents existed initially; zero source code, zero tests, zero configs, zero dependency manifests, zero notebooks, zero data files, zero CI files.
+- **Backup Created:** `docs/_audit_backup/` created containing timestamped `.20261017_234500.bak` copies of all 10 initial markdown files.
+
+---
+
+## 3. Requirement Status Matrix
+
+| Requirement ID | Description | Status | Evidence / Artifact |
+|:---|:---|:---:|:---|
+| **REQ-A01** | List every file and directory in root and docs/ with size and last-modified date | VERIFIED PASS | PowerShell `Get-ChildItem -Path . -Recurse` output recorded in report |
+| **REQ-A02** | State EXISTS or MISSING for all 13 specified documents | VERIFIED PASS | 10 existed; 3 were MISSING (`PROJECT_STATE.md`, `CHANGELOG.md`, `AUDIT_FINDINGS.md`) and are now created |
+| **REQ-A03** | List any source code, tests, configs, data, CI; state plainly if none exist | VERIFIED PASS | Plainly verified: Zero code, tests, configs, or data exist in workspace |
+| **REQ-A04** | Report git repository status, branch, HEAD, recoverability of pre-Phase-0.1 docs | VERIFIED PASS | Git not in PATH; pre-Phase-0.1 originals not recoverable from history; logged as open issue |
+| **REQ-A05** | Report read-only environment facts (OS, python/node); mark rest not checked | VERIFIED PASS | Windows, Python 3.13.2 verified; node/git absent; others marked "not checked" |
+| **REQ-B01** | Read completely every document in REQ-A02 that exists, with line counts & headings | VERIFIED PASS | All 10 existing documents read in full; line counts, headings, and summaries recorded |
+| **REQ-B02** | Verify 11 specific claims from earlier report against actual file text (FOUND/NOT FOUND) | VERIFIED PASS | Verified each of the 11 claims with file, section, and quote |
+| **REQ-B03** | Record contradictions or duplications between documents | VERIFIED PASS | Recorded roadmap sequence contradiction, formula discrepancies, and overclaims |
+| **REQ-C01** | Itô and quadratic variation algebraic invariant and $L^2$ RMS convergence | VERIFIED PASS | In-place updates in `MATHEMATICAL_VALIDATION_PLAN.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C02** | Strong/weak SDE error: exact GBM moment recursions for weak error & negative controls | VERIFIED PASS | In-place updates in `MATHEMATICAL_VALIDATION_PLAN.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C03** | Monte Carlo coverage: exact binomial band derived from false-failure budget ($10^{-3}$) | VERIFIED PASS | In-place updates in `MATHEMATICAL_VALIDATION_PLAN.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C04** | Variance reduction: reclassify as `STAT_VALIDATION`, remove unjustified hardcoded thresholds | VERIFIED PASS | In-place updates in `MATHEMATICAL_VALIDATION_PLAN.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C05** | Multiple-testing/FWER: exact binomial upper quantile for false-failure budget ($10^{-3}$) | VERIFIED PASS | In-place updates in `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C06** | 2-asset minimum variance formula with $\sigma_{12}$ and KKT solver status checks | VERIFIED PASS | In-place updates in `MATHEMATICAL_VALIDATION_PLAN.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C07** | Hill estimator: derive tolerance from $1/\sqrt{k}$; reallocate to Phase 4 | VERIFIED PASS | In-place updates in `MATHEMATICAL_VALIDATION_PLAN.md` & `IMPLEMENTATION_ROADMAP.md` |
+| **REQ-C08** | Bandits: reclassify regret as `STAT_VALIDATION` vs Auer (2002); drawdown as `EMP_HYPOTHESIS` | VERIFIED PASS | In-place updates in `ACCEPTANCE_CRITERIA.md` & `EXPERIMENTAL_DESIGN.md` |
+| **REQ-C09** | Gaussian Processes: synthetic prior validation (`STAT_VALIDATION`), PIT histograms, CRPS | VERIFIED PASS | In-place updates in `MATHEMATICAL_VALIDATION_PLAN.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C10** | Diffusion: toy checks on 1D Gaussian targets, no monotonic loss, mark STRETCH | VERIFIED PASS | In-place updates in `ACCEPTANCE_CRITERIA.md` & `EXPERIMENTAL_DESIGN.md` |
+| **REQ-C11** | Reproducibility: NumPy `Generator` with `PCG64` and `SeedSequence.spawn`; `rtol+atol` | VERIFIED PASS | In-place updates in `PROJECT_ARCHITECTURE.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-C12** | Source traceability: re-label items without inspected URL/date as `UNVERIFIED` | VERIFIED PASS | In-place updates in `SOURCE_TRACEABILITY.md` |
+| **REQ-C13** | Data & licensing audit: classify external sources as `TERMS UNVERIFIED`; synthetic first | VERIFIED PASS | In-place updates in `DATA_AND_LICENSE_STRATEGY.md` |
+| **REQ-C14** | Architecture audit: flag heavy dependencies as proposals; remove global seeding | VERIFIED PASS | In-place updates in `PROJECT_ARCHITECTURE.md` |
+| **REQ-C15** | Research protocol: walk-forward, trial registry, multiple testing options, coherent CVaR | VERIFIED PASS | In-place updates in `EXPERIMENTAL_DESIGN.md` & `MATHEMATICAL_VALIDATION_PLAN.md` |
+| **REQ-C16** | Classification: assign exactly one of 6 classes to every acceptance criterion | VERIFIED PASS | In-place updates in `ACCEPTANCE_CRITERIA.md` |
+| **REQ-D01** | Rewrite phase dependency order to exact required sequence (Phases 0 through 8) | VERIFIED PASS | In-place updates in `IMPLEMENTATION_ROADMAP.md` & `DOMAIN_COVERAGE_MATRIX.md` |
+| **REQ-E01** | Redefine Milestone 1 scope (scaffolding, MC $E[S_T]$, BM increments & QV, GBM, SDE) | VERIFIED PASS | In-place updates in `IMPLEMENTATION_ROADMAP.md` & `ACCEPTANCE_CRITERIA.md` |
+| **REQ-E02** | Provide objective, math assumptions, interfaces, FAST/SLOW tests, derived tolerances | VERIFIED PASS | Documented in `IMPLEMENTATION_ROADMAP.md` Section 2 |
+| **REQ-E03** | Assign M1- IDs to every Milestone 1 requirement with NOT STARTED status | VERIFIED PASS | Documented in `ACCEPTANCE_CRITERIA.md` Section 3 |
+| **REQ-E04** | List proposed tooling for Milestone 1 as proposals pending approval (no torch/pydantic) | VERIFIED PASS | Documented in `IMPLEMENTATION_ROADMAP.md` Section 3 |
+| **REQ-F01** | Create append-only `docs/CHANGELOG.md` | VERIFIED PASS | File created and populated |
+| **REQ-F02** | Create `docs/AUDIT_FINDINGS.md` with finding table and non-present list | VERIFIED PASS | File created and populated |
+| **REQ-F03** | Create `PROJECT_STATE.md` at repository root | VERIFIED PASS | File created and populated |
+| **REQ-F04** | Retract all overclaims of "complete", "100%", or "audited" from all documents | VERIFIED PASS | All documents audited and overclaims removed |
+| **REQ-F05** | Self-verification: re-read every edited file; confirm only Markdown changed | VERIFIED PASS | Re-read performed and verified |
+
+---
+
+## 4. Commands Executed (Read-Only Inspection)
+1. `git status` — Returned `CommandNotFoundException` (Git is not installed/recognized in PATH).
+2. `python --version; node --version` — Returned `Python 3.13.2`; `node` not recognized in PATH.
+3. `Get-ChildItem -Path . -Recurse | Select-Object FullName, Length, LastWriteTimeUtc | Format-Table -AutoSize` — Listed all repository files, lengths, and write dates.
+4. Backup creation via PowerShell: copied initial 10 `.md` files to `docs/_audit_backup/*.20261017_234500.bak`.
+
+---
+
+## 5. Known Defects & Open Issues
+1. **Unrecoverable Pre-Phase-0.1 Original Files:** Because `git` is not installed/active in this environment and no prior backup existed before Phase 0.2, the exact pre-Phase-0.1 versions of the documents cannot be retrieved from version control history. Preservation of pre-Phase-0.1 text cannot be verified against git commits.
+2. **External Data Terms Uninspected:** Terms of service for Yahoo Finance, FRED, Stooq, Fannie Mae, and Freddie Mac have not been directly opened and cited with specific URLs and clauses in this session; they are classified as `TERMS UNVERIFIED`.
+3. **External Curriculum Uninspected:** Official AlphaGrep × IIIT Hyderabad website pages and syllabus URLs have not been directly opened with exact text quotes in this session; external curriculum claims are classified as `UNVERIFIED`.
+4. **Academic Citations Recalled from Memory:** Literature citations (Auer et al. 2002, DeMiguel et al. 2009, McNeil & Frey 2000) are classified as "recalled, not inspected" until verified.
+
+---
+
+## 6. Approved Deviations
+- None.
+
+---
+
+## 7. Key Design Decisions
+1. **Criteria Taxonomy:** Strict enforcement of the 6-part taxonomy (`MATH_INVARIANT`, `NUM_TOLERANCE`, `STAT_VALIDATION`, `EMP_HYPOTHESIS`, `PERF_BENCHMARK`, `DOC_REPRO`).
+2. **Negative Results Policy:** Negative results on empirical hypotheses (`EMP_HYPOTHESIS`) are recognized as primary scientific deliverables and do not cause test or build failures.
+3. **RNG Architecture:** Standardized on NumPy `Generator` with `PCG64` initialized from `SeedSequence`; parallel workers must spawn from `SeedSequence`.
+4. **Milestone 1 Scope Boundary:** Scoped strictly to core stochastic foundations (Brownian motion, GBM exact moments, Euler-Maruyama & Milstein with Itô identity, Monte Carlo on $E[S_T]$), deferring all derivatives, machine learning, optimization, and real data to later phases.
+
+---
+
+## 8. Decisions Awaiting User Approval
+1. **Milestone 1 Tooling Stack:** Proposed minimal stack: Python 3.11/3.13 standard library + NumPy + SciPy (optional for special functions) + pytest. Proposed rejection of PyTorch, Pydantic, CVXPY for Milestone 1.
+2. **False-Failure Budget:** Proposed default $\alpha_{\text{fail}} = 10^{-3}$ for exact binomial coverage thresholds and multiple testing.
+3. **Replication Counts:** Proposed $R = 1,000$ independent trials for Monte Carlo coverage and FWER tests (with $R = 200$ as a fast proposal).
+4. **FAST Suite Runtime Target:** Proposed runtime budget of $< 15$ seconds on local CPU for the FAST unit test suite (advisory, pending measurement).
+5. **Reallocation of Scoped Modules:** Confirmation of moving Hill estimator to Phase 4 (Tail Risk) and Securitized Products to Phase 2 (STRETCH).
+
+---
+
+## 9. Next Planned Task
+- **Task:** Milestone 1 Implementation (Phase 1: Reproducible Stochastic Foundations).
+- **Status:** **NOT STARTED** (Awaiting formal user approval of Phase 0.2 audit).
+
+---
+
+## 10. Core Governance Rule
+**Rule:** No phase or module shall be marked complete while any mandatory criterion is unresolved, failed, blocked, or unverified. Phase completion is determined solely by independent review.

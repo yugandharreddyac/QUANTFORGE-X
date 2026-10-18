@@ -1,0 +1,122 @@
+# ACCEPTANCE CRITERIA & SCIENTIFIC DEFINITION OF DONE
+
+**QUANTFORGE X — Quantitative Verification Standards, Tolerances & Audit Checklist**
+
+---
+
+## 1. Global Definition of Done (DoD) & Criteria Classification
+
+A component, module, or research experiment in **QUANTFORGE X** is formally considered **DONE** if and only if all applicable requirements across the six standardized criteria classes are satisfied:
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    CRITERIA TAXONOMY FRAMEWORK                                     |
++----------------------------------------------------------------------------------------------------+
+  1. [MATH_INVARIANT]   Analytical identity or conservation law (Strict floating-point tolerance).
+  2. [NUM_TOLERANCE]    Numerical approximation governed by asymptotic convergence rate (Pass/Fail).
+  3. [STAT_VALIDATION]  Statistical algorithm property on synthetic data with known ground truth.
+  4. [EMP_HYPOTHESIS]   Empirical hypothesis on market data (Scientific outcome; negative results OK).
+  5. [PERF_BENCHMARK]   Computational latency, memory limits, and hardware constraints.
+  6. [DOC_REPRO]        Cryptographic hash registry, seed logging, and failure documentation.
++----------------------------------------------------------------------------------------------------+
+```
+
+### Key Scientific Principle:
+**Only use PASS/FAIL gates where failure indicates incorrect software implementation or an unmet engineering requirement.** Empirical research outcomes (e.g. whether a Transformer outperforms Ridge, whether unconditional EVT passes Christoffersen tests during a market shock, or whether CVaR-UCB beats UCB1 on a specific historical dataset) must **never** be used as pass/fail build gates. A documented, statistically sound negative result is a primary research deliverable.
+
+---
+
+## 2. Quantitative Tolerances & Audited Benchmarks
+
+| Domain / Component | Verification Test | Benchmark / Ground Truth | Class | Mandatory Tolerance / Threshold | Verification Tool / Script |
+|:---|:---|:---|:---:|:---:|:---|
+| **Black-Scholes Pricing** | Put-Call Parity Identity | Analytical Identity: $C - P = S - K e^{-rT}$ | `MATH_INVARIANT` | $|C - P - (S - K e^{-rT})| < 10^{-12}$ | `test_black_scholes.py` |
+| **Option Greeks** | Analytical vs Finite Difference | Analytical derivatives $(\Delta, \Gamma, \Theta, \mathcal{V}, \rho)$ | `NUM_TOLERANCE` | Relative discrepancy $< 10^{-4}$ on interior grid | `test_greeks.py` |
+| **Monte Carlo Pricing** | Deterministic Regression Test | Precomputed price with fixed seed | `NUM_TOLERANCE` | $|\hat{C}_{MC} - C_{\text{expected}}| < 10^{-6}$ for fixed seed | `test_monte_carlo.py` |
+| **Monte Carlo Coverage** | 99% Confidence Interval Coverage | True Black-Scholes analytical price | `STAT_VALIDATION` | Coverage in $[96.0\%, 100.0\%]$ across 200 trials | `test_mc_coverage.py` |
+| **Monte Carlo Rate** | Asymptotic Error Decay Rate | Theoretical CLT: $\text{RMSE} \propto N^{-0.5}$ | `NUM_TOLERANCE` | Log-log empirical slope $\in [-0.55, -0.45]$ | `test_mc_convergence.py` |
+| **Itô Calculus** | Stochastic Integral Discrepancy | Theoretical $L^2$ error: $\sqrt{T \Delta t / 2}$ | `NUM_TOLERANCE` | Empirical $L^2$ error slope in $[0.45, 0.55]$ vs $\Delta t$ | `test_ito.py` |
+| **SDE Solvers (Strong)** | Strong Convergence Rate on GBM | Exact analytical path $X_t = X_0 e^{(\mu - \frac{1}{2}\sigma^2)t + \sigma W_t}$ | `NUM_TOLERANCE` | Euler slope $\in [0.45, 0.55]$; Milstein $\in [0.90, 1.10]$ | `test_sde_solvers.py` |
+| **SDE Solvers (Weak)** | Weak Convergence on Observable $x^2$ | Analytical moment $\mathbb{E}[X_T^2]$ | `NUM_TOLERANCE` | Weak error scales as $\mathcal{O}(\Delta t)$ for both solvers | `test_sde_solvers.py` |
+| **Variance Reduction** | Antithetic & Control Variates | Crude Monte Carlo variance on ATM option | `NUM_TOLERANCE` | $\text{VRF}_{\text{Antithetic}} \ge 1.4$; $\text{VRF}_{\text{Control}} \ge 3.5$ | `test_variance_reduction.py` |
+| **Heavy-Tail Index** | Hill Estimator on Synthetic Pareto | Ground-truth Pareto parameter $\alpha = 2.5$ | `STAT_VALIDATION` | Relative bias $|\hat{\alpha} - 2.5| / 2.5 \le 0.10$ on $N=50k$ | `test_heavy_tails.py` |
+| **EVT Kupiec / Christoffersen**| Test Statistic Implementation | Verified numerical Likelihood Ratio fixtures | `STAT_VALIDATION` | $|LR_{\text{calc}} - LR_{\text{fixture}}| < 10^{-8}$ | `test_evt_backtest.py` |
+| **EVT Crisis Backtest** | 99% VaR on 2008 / 2020 Crises | Historical crash returns (GFC, COVID) | `EMP_HYPOTHESIS` | Unconditional vs conditional GARCH-EVT evaluated | `exp02_var_report.md` |
+| **Gaussian Process (Exact)** | Posterior on Noise-Free Sine Wave | Analytical function $f(x) = \sin(x)$ | `NUM_TOLERANCE` | Max absolute error on interpolation grid $< 10^{-4}$ | `test_gaussian_process.py` |
+| **Gaussian Process (Market)**| Empirical Uncertainty Calibration | Historical out-of-sample volatility | `EMP_HYPOTHESIS` | Continuous Ranked Probability Score (CRPS) & ECE | `gp_calibration_study.md` |
+| **Kernel Gram Matrix** | Mercer Positive Semi-Definiteness | RKHS theorem: $v^T K v \ge 0$ | `MATH_INVARIANT` | Minimum eigenvalue $\lambda_{\min}(K) \ge -10^{-10}$ | `test_kernels.py` |
+| **Convex Optimization** | KKT Optimality & Budget Constraint | CVXPY solution with OSQP (`eps=1e-7`) | `NUM_TOLERANCE` | Primal gap $< 10^{-6}$; budget $|\sum w_i - 1| < 10^{-6}$ | `test_convex_opt.py` |
+| **Markowitz 2-Asset** | Numerical vs Analytical Weights | Closed-form formula $w_1^* = \sigma_2^2 / (\sigma_1^2 + \sigma_2^2)$ | `NUM_TOLERANCE` | Absolute weight error $< 10^{-7}$ | `test_markowitz.py` |
+| **Securitized Waterfall** | Cash-Flow Conservation Law | Total collateral cash inflow | `MATH_INVARIANT` | Inflow $\equiv \sum \text{Tranches} + \text{Losses}$ ($< 10^{-8}$) | `test_securitization.py` |
+| **MAB Regret Growth** | UCB1 Theoretical Regret Bound | Mean pseudo-regret across $M=100$ runs | `NUM_TOLERANCE` | Regret curve fits $R(T) \le C \ln T + D$ ($R^2 > 0.90$) | `test_mab.py` |
+| **Risk-Sensitive Bandit** | CVaR-UCB vs UCB1 Drawdown | Pareto-shocked arm reward distributions | `EMP_HYPOTHESIS` | Drawdown and CVaR trade-off documented across $\alpha$ | `exp05_risk_bandits.md` |
+| **Temporal Causality** | Deep Learning Causal Masking | Gradient w.r.t. future inputs $\partial y_t / \partial x_{t+k}$ | `MATH_INVARIANT` | $\partial y_t / \partial x_{t+k} \equiv 0$ for all $k > 0$ | `test_causality.py` |
+| **Diffusion Scenarios** | Stylized Facts Preservation | Real daily index returns | `EMP_HYPOTHESIS` | Kurtosis & squared-return ACF comparison reported | `exp04_diffusion.md` |
+| **Anti-Leakage Guard** | Chronological Data Split Invariant | Train/Test timestamp arrays | `MATH_INVARIANT` | $\max(\text{train\_indices}) < \min(\text{test\_indices})$ strictly | `test_leakage_guard.py` |
+| **Multiple Testing** | Family-Wise Error Rate Control | 100 pure white-noise series | `STAT_VALIDATION` | FWER $\le 0.08$ across 200 simulations at $\alpha=0.05$ | `test_multiple_testing.py` |
+| **Deterministic Reproducibility**| Local Exact Reproducibility | Identical random seed and config | `DOC_REPRO` | Bitwise identical outputs on same machine/library build | `test_reproducibility.py` |
+| **Cross-Platform Consistency** | Numerical Reproducibility | Different hardware/OS platforms | `NUM_TOLERANCE` | Metric arrays match within `np.allclose(atol=1e-6)` | `test_reproducibility.py` |
+
+---
+
+## 3. Phase-by-Phase Sign-off Checklist
+
+### Phase 1 Sign-off: Mathematical & Stochastic Foundations
+- [ ] `[STAT_VALIDATION]` `test_distributions.py`: MLE parameter estimation recovers synthetic Gaussian, Student-t, Pareto parameters within statistical confidence.
+- [ ] `[NUM_TOLERANCE]` `test_sde_solvers.py`: Euler-Maruyama ($\mathcal{O}(\Delta t^{0.5})$) and Milstein ($\mathcal{O}(\Delta t)$) strong error slopes verified on 1D Geometric Brownian Motion.
+- [ ] `[NUM_TOLERANCE]` `test_ito.py`: Discrepancy $\left\| I_{\text{discrete}} - \frac{1}{2}(W_T^2 - T) \right\|_{L^2}$ converges as $\sqrt{T \Delta t / 2}$.
+- [ ] `[NUM_TOLERANCE]` `test_variance_reduction.py`: Antithetic and control variate variance reduction factors verified for benchmark parameters.
+- [ ] `[STAT_VALIDATION]` `test_heavy_tails.py`: Hill estimator recovers synthetic Pareto tail index within $\pm 10\%$.
+- [ ] `[DOC_REPRO]` Phase 1 test suite executes locally in $< 15$ seconds with deterministic seeds.
+
+### Phase 2 Sign-off: Financial Engineering & Pricing Engines
+- [ ] `[MATH_INVARIANT]` `test_black_scholes.py`: Closed-form call/put prices satisfy Put-Call parity within $10^{-12}$.
+- [ ] `[NUM_TOLERANCE]` `test_monte_carlo.py`: Monte Carlo price matches analytical BS call price for fixed seed; convergence rate verified.
+- [ ] `[STAT_VALIDATION]` `test_mc_coverage.py`: Multi-trial 99% confidence interval coverage falls in $[96\%, 100\%]$.
+- [ ] `[MATH_INVARIANT]` `test_securitization.py`: Collateral cash-flow conservation holds strictly across all tranches and default scenarios.
+- [ ] `[STAT_VALIDATION]` `test_time_series.py`: GARCH(1,1) model parameters fit within standard errors on synthetic ARCH paths.
+
+### Phase 3 Sign-off: Statistical Learning & Kernel Methods
+- [ ] `[NUM_TOLERANCE]` `test_regression.py`: Ridge and Lasso shrinkage paths trace expected coordinate descent trajectories.
+- [ ] `[MATH_INVARIANT]` `test_kernels.py`: Mercer positive semi-definiteness verified for Linear, RBF, and Matérn Gram matrices ($\lambda_{\min} \ge -10^{-10}$).
+- [ ] `[NUM_TOLERANCE]` `test_gaussian_process.py`: Exact GP posterior mean matches noise-free synthetic function within $10^{-4}$.
+- [ ] `[EMP_HYPOTHESIS]` `exp03_volatility_forecasting.md`: Linear, SVR, GP, and TCN models benchmarked out-of-sample under walk-forward evaluation (CRPS, RMSE, and White's Reality Check reported).
+
+### Phase 4 Sign-off: Modern AI, Transformers & Diffusion Scenario Generation
+- [ ] `[MATH_INVARIANT]` `test_causality.py`: TCN and Transformer models pass zero-leakage causal gradient checks ($\partial y_t / \partial x_{t+k} \equiv 0$).
+- [ ] `[NUM_TOLERANCE]` `test_diffusion.py`: 1D temporal DDPM training loss decreases monotonically across epochs; output tensors are finite and non-NaN.
+- [ ] `[EMP_HYPOTHESIS]` `exp04_diffusion_stylized_facts.md`: Statistical fidelity of generated scenarios evaluated against empirical facts (kurtosis, volatility clustering); failure modes documented in registry.
+
+### Phase 5 Sign-off: Bandits, Sequential Decision-Making & Reinforcement Learning
+- [ ] `[NUM_TOLERANCE]` `test_mab.py`: UCB1 and Thompson Sampling exhibit logarithmic cumulative pseudo-regret growth on stationary synthetic arms.
+- [ ] `[MATH_INVARIANT]` `test_environment.py`: Financial trading MDP deducts transaction costs strictly according to schedule.
+- [ ] `[MATH_INVARIANT]` `test_drl_portfolio.py`: PPO policy allocations project strictly onto the probability simplex ($\sum w_i = 1, w_i \ge 0$).
+- [ ] `[EMP_HYPOTHESIS]` `exp05_risk_sensitive_bandits.md`: Worst 5% drawdown and CVaR of risk-sensitive bandits (CVaR-UCB) compared against UCB1 under heavy-tailed return shocks.
+
+### Phase 6 Sign-off: Robust Portfolio Optimization & Transaction Costs
+- [ ] `[NUM_TOLERANCE]` `test_convex_opt.py`: Markowitz solver verifies KKT conditions with primal feasibility gap $< 10^{-6}$.
+- [ ] `[NUM_TOLERANCE]` `test_markowitz_analytical.py`: Numerical solution matches 2-asset analytical minimum variance weights within $10^{-7}$.
+- [ ] `[MATH_INVARIANT]` `test_transaction_costs.py`: Adding transaction cost penalty monotonically reduces portfolio turnover.
+- [ ] `[EMP_HYPOTHESIS]` `exp06_robust_vs_naive.md`: Robust Markowitz optimization compared out-of-sample against naive $1/N$ diversification under realistic transaction costs.
+
+### Phase 7 Sign-off: Quantitative Research Protocol, EVT Risk & Scientific Validation
+- [ ] `[MATH_INVARIANT]` `test_walk_forward.py`: Chronological walk-forward splits verified with purging and embargo windows.
+- [ ] `[MATH_INVARIANT]` `test_leakage_guard.py`: Synthetic look-ahead injection triggers immediate automated test failure.
+- [ ] `[STAT_VALIDATION]` `test_multiple_testing.py`: FDR and Bonferroni adjustments correctly control Family-Wise Error Rate on pure noise.
+- [ ] `[EMP_HYPOTHESIS]` `exp02_evt_crash_backtest.md`: Kupiec POF and Christoffersen independence tests evaluated for unconditional and conditional EVT during 2008 and 2020 crash regimes.
+- [ ] `[DOC_REPRO]` `test_reproducibility.py`: Identical random seed and config reproduce bitwise identical metric outputs on local machine.
+
+### Phase 8 Sign-off: Unified Research Dashboard & End-to-End Suite
+- [ ] `[DOC_REPRO]` `test_dashboard_artifacts.py`: Dashboard successfully parses and renders real artifacts from all 7 experiments.
+- [ ] `[DOC_REPRO]` `test_full_replication.py`: Single master script executes end-to-end pipeline and reproduces all figures and metrics.
+- [ ] `[DOC_REPRO]` `failed_hypotheses_registry.json`: All rejected hypotheses, degraded regimes, and ablation findings fully cataloged.
+
+---
+
+## 4. Phase 0.1 Change Log & Audit Summary
+
+- **Introduced 6-Part Criteria Taxonomy:** Formally separated analytical invariants (`MATH_INVARIANT`), numerical tolerances (`NUM_TOLERANCE`), and statistical algorithm tests (`STAT_VALIDATION`) from empirical research hypotheses (`EMP_HYPOTHESIS`).
+- **Eliminated Artificial Pass/Fail Gates on Research Outcomes:** Removed requirements forcing trading strategies to be profitable, neural networks to beat baselines, or unconditional EVT models to pass independence tests during market crises. These are now explicitly classified as empirical deliverables where negative results are documented.
+- **Fixed Stochastic Confidence Interval Flakiness:** Replaced single-run 99% CI test (which had a 1% inherent random failure rate) with deterministic seed regression tests and multi-trial binomial coverage tests.
+- **Audited Itô Discrepancy & SDE Convergence:** Standardized Itô verification to ensemble $L^2$ error ($\sqrt{T \Delta t / 2}$) and explicitly documented regularity conditions for Euler and Milstein solvers.
+- **Clarified Reproducibility Across Platforms:** Explicitly distinguished local bitwise reproducibility (same machine, library, and seed) from cross-platform numerical consistency (`np.allclose(atol=1e-6)`).
